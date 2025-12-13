@@ -61,6 +61,9 @@ namespace dotNet_Project.Controllers
             bookmark.UserId = userId;
             bookmark.CreatedAt = DateTime.Now; // Atentie: Asigura-te ca proprietatea din Model se numeste CreatedAt sau DateCreated
 
+            ModelState.Remove("UserId");
+            ModelState.Remove("CreatedAt");
+
             if (ModelState.IsValid)
             {
                 _context.Add(bookmark);
@@ -103,16 +106,26 @@ namespace dotNet_Project.Controllers
 
             var currentUserId = _userManager.GetUserId(User);
 
-            // Luam entitatea originala fara tracking pentru a verifica proprietarul
+            // 1. Luăm bookmark-ul vechi din baza de date (fără tracking)
             var existingBookmark = await _context.Bookmarks.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
 
+            // Verificăm permisiunea
             if (existingBookmark == null || existingBookmark.UserId != currentUserId)
             {
                 return Forbid();
             }
 
-            // Fortam UserId-ul sa ramana cel corect, chiar daca vine altceva din formular
-            bookmark.UserId = currentUserId;
+            // --- CE LIPSEA LA TINE (ÎNCEPUT) ---
+
+            // 2. Păstrăm datele critice care nu vin din formular
+            bookmark.UserId = currentUserId;                 // Ne asigurăm că rămâne același user
+            bookmark.CreatedAt = existingBookmark.CreatedAt; // IMPORTANT: Recuperăm data originală! Altfel devine 0001.
+
+            // 3. Ștergem erorile de validare pentru câmpurile completate manual
+            ModelState.Remove("UserId");
+            ModelState.Remove("CreatedAt");
+
+            // --- CE LIPSEA LA TINE (SFÂRȘIT) ---
 
             if (ModelState.IsValid)
             {
