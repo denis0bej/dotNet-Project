@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Xml.Linq;
 
-namespace ProiectLaborator.Models
+namespace dotNet_Project.Models
 {
     public class Bookmark
     {
