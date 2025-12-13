@@ -30,10 +30,10 @@ namespace dotNet_Project.Models
         // 1. Autorul Bookmark-ului
         [Required]
         public string UserId { get; set; }
-        
+
         // NOTĂ: DE FACUT ApplicationUser
 
-        //public virtual ApplicationUser User { get; set; }
+        public virtual ApplicationUser User { get; set; }
 
         // 2. Categoria
         [Required(ErrorMessage = "Selectarea unei categorii este obligatorie")]
@@ -41,7 +41,7 @@ namespace dotNet_Project.Models
 
         // NOTĂ: DE FACUT Category
 
-        //public virtual Category Category { get; set; }
+        public virtual Category Category { get; set; }
 
         // --- Colecții ---
 
