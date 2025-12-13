@@ -4,7 +4,7 @@ using dotNet_Project.Models;
 
 namespace dotNet_Project.Data
 {
-    public class ApplicationDbContext : IdentityDbContext
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -13,6 +13,5 @@ namespace dotNet_Project.Data
         // Aici vei adauga mai tarziu:
         public DbSet<Bookmark> Bookmarks { get; set; }
         public DbSet<Category> Categories { get; set; }
-        // Dar momentan merge si fara, doar pentru configurare.
     }
 }
