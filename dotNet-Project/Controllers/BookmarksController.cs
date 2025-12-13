@@ -46,8 +46,8 @@ namespace dotNet_Project.Controllers
         [HttpGet]
         public IActionResult Create()
         {
-            // NOTA: Decomenteaza linia de mai jos doar daca ai implementat clasa Category si vrei dropdown
-            // ViewBag.Categories = _context.Categories.ToList(); 
+            // Trimitem lista de categorii către View pentru Dropdown
+            ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name");
             return View();
         }
 
@@ -67,8 +67,8 @@ namespace dotNet_Project.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // NOTA: Decomenteaza daca ai categorii, pentru a repopula dropdown-ul in caz de eroare
-            // ViewBag.Categories = _context.Categories.ToList();
+
+            ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name");
             return View(bookmark);
         }
 
@@ -89,8 +89,7 @@ namespace dotNet_Project.Controllers
                 return Forbid();
             }
 
-            // NOTA: Decomenteaza daca ai categorii
-            // ViewBag.Categories = _context.Categories.ToList();
+            ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name", bookmark.CategoryId);
             return View(bookmark);
         }
 
@@ -128,6 +127,8 @@ namespace dotNet_Project.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
+            ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name", bookmark.CategoryId);
             return View(bookmark);
         }
 
