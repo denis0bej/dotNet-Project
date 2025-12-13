@@ -1,0 +1,71 @@
+﻿@model dotNet_Project.Models.Bookmark
+
+@{
+    ViewData["Title"] = "Detalii Bookmark";
+}
+
+<div class="container mt-5">
+    <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">@Model.Title</h3>
+            <span class="badge bg-light text-primary">Categorie ID: @Model.CategoryId</span>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    @if (!string.IsNullOrEmpty(Model.MediaUrl))
+                    {
+                        // Verificare simplă pentru YouTube Embed
+                        if (Model.MediaUrl.Contains("youtube.com") || Model.MediaUrl.Contains("youtu.be"))
+                        {
+                            var videoId = Model.MediaUrl.Split("v=").LastOrDefault();
+                            <div class="ratio ratio-16x9">
+                                <iframe src="https://www.youtube.com/embed/@videoId" allowfullscreen></iframe>
+                            </div>
+                        }
+                        // Verificare Imagine
+                        else if (Model.MediaUrl.EndsWith(".jpg") || Model.MediaUrl.EndsWith(".png") || Model.MediaUrl.EndsWith(".jpeg"))
+                        {
+                            <img src="@Model.MediaUrl" class="img-fluid rounded" alt="@Model.Title">
+                        }
+                        // Link simplu
+                        else
+                        {
+                            <div class="alert alert-secondary">
+                                <i class="bi bi-link-45deg"></i> Link extern:
+                                <a href="@Model.MediaUrl" target="_blank">@Model.MediaUrl</a>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center p-5 bg-light rounded">
+                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                            <p>Fără conținut media</p>
+                        </div>
+                    }
+                </div>
+
+                <div class="col-md-6">
+                    <h5>Descriere</h5>
+                    <p class="lead" style="font-size: 1rem; white-space: pre-wrap;">@Model.Description</p>
+
+                    <hr />
+
+                    <dl class="row">
+                        <dt class="col-sm-4">Data Creării</dt>
+                        <dd class="col-sm-8">@Model.CreatedAt.ToString("g")</dd>
+
+                        <dt class="col-sm-4">Autor (User ID)</dt>
+                        <dd class="col-sm-8">@Model.UserId</dd>
+                    </dl>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Editează</a>
+                        <a asp-action="Index" class="btn btn-secondary">Înapoi la Listă</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

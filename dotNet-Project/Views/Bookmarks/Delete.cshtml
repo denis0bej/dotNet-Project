@@ -1,0 +1,51 @@
+﻿@model dotNet_Project.Models.Bookmark
+
+@{
+    ViewData["Title"] = "Șterge Bookmark";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-danger shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Ștergere Bookmark</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title text-center mb-4">Ești sigur că vrei să ștergi acest bookmark?</h5>
+
+                    <div class="alert alert-warning text-center">
+                        Această acțiune este <strong>ireversibilă</strong>!
+                    </div>
+
+                    <dl class="row">
+                        <dt class="col-sm-4">Titlu:</dt>
+                        <dd class="col-sm-8">@Model.Title</dd>
+
+                        <dt class="col-sm-4">Categorie ID:</dt>
+                        <dd class="col-sm-8">@Model.CategoryId</dd>
+
+                        <dt class="col-sm-4">Adăugat la:</dt>
+                        <dd class="col-sm-8">@Model.CreatedAt.ToString("dd/MM/yyyy")</dd>
+                    </dl>
+
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <div class="p-3 bg-light rounded mb-3">
+                            <em>"@Model.Description"</em>
+                        </div>
+                    }
+
+                    <form asp-action="Delete">
+                        <input type="hidden" asp-for="Id" />
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <a asp-action="Index" class="btn btn-secondary me-md-2">Anulează</a>
+                            <button type="submit" class="btn btn-danger">Da, Șterge Bookmark-ul</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

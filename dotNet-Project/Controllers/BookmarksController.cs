@@ -180,5 +180,29 @@ namespace dotNet_Project.Controllers
         {
             return _context.Bookmarks.Any(e => e.Id == id);
         }
+
+
+        // 5. DETALII (Details/Show) - Afișarea unui singur bookmark
+        [HttpGet]
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var bookmarkQuery = _context.Bookmarks.AsQueryable();
+
+            // NOTA: Decomentează linia de mai jos dacă vrei să afișezi numele categoriei
+            // bookmarkQuery = bookmarkQuery.Include(b => b.Category);
+
+            var bookmark = await bookmarkQuery.FirstOrDefaultAsync(m => m.Id == id);
+
+            if (bookmark == null) return NotFound();
+
+            // Verificăm dacă userul are voie să vadă (momentan lăsăm doar owner-ul, 
+            // dar pe viitor aici vei permite și vizitatorilor să vadă bookmark-uri publice)
+            // var currentUserId = _userManager.GetUserId(User);
+            // if (bookmark.UserId != currentUserId) { return Forbid(); }
+
+            return View(bookmark);
+        }
     }
 }
