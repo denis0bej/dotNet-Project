@@ -244,9 +244,6 @@ namespace dotNet_Project.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ApplicationUserId")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<int>("CategoryId")
                         .HasColumnType("int");
 
@@ -267,13 +264,13 @@ namespace dotNet_Project.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ApplicationUserId");
-
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Bookmarks");
                 });
@@ -285,6 +282,9 @@ namespace dotNet_Project.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -353,15 +353,21 @@ namespace dotNet_Project.Migrations
 
             modelBuilder.Entity("dotNet_Project.Models.Bookmark", b =>
                 {
-                    b.HasOne("dotNet_Project.Models.ApplicationUser", null)
-                        .WithMany("Bookmarks")
-                        .HasForeignKey("ApplicationUserId");
-
-                    b.HasOne("dotNet_Project.Models.Category", null)
+                    b.HasOne("dotNet_Project.Models.Category", "Category")
                         .WithMany("Bookmarks")
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("dotNet_Project.Models.ApplicationUser", "User")
+                        .WithMany("Bookmarks")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("dotNet_Project.Models.Category", b =>

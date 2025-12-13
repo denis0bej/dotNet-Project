@@ -37,18 +37,22 @@ namespace dotNet_Project.Controllers
             }
         }
 
-        // GET: Categories/Create
-        public IActionResult Create()
+        // GET: Categories/New
+        public IActionResult New()
         {
             return View();
         }
 
-        // POST: Categories/Create
+        // POST: Categories/New
         [HttpPost]
         [Authorize(Roles = "Admin,User")] // Trebuie sa fie autentificat
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name,IsPublic")] Category category)
+        public async Task<IActionResult> New([Bind("Id,Name,IsPublic")] Category category)
         {
+            ModelState.Remove("UserId");
+            ModelState.Remove("User");
+            ModelState.Remove("Bookmarks");
+
             if (ModelState.IsValid)
             {
                 category.UserId = _userManager.GetUserId(User);
@@ -96,6 +100,10 @@ namespace dotNet_Project.Controllers
                 RedirectToAction("AccessDenied");
             }
 
+            ModelState.Remove("UserId");
+            ModelState.Remove("User");
+            ModelState.Remove("Bookmarks");
+
             if (ModelState.IsValid)
             {
                 try
@@ -139,6 +147,7 @@ namespace dotNet_Project.Controllers
 
         // POST: Categories/Delete/5
         [HttpPost, ActionName("Delete")]
+        [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
