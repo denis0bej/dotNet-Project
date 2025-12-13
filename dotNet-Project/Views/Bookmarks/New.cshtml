@@ -32,13 +32,14 @@
 
                         <div class="mb-3">
                             <label asp-for="Description" class="form-label">Descriere</label>
-                            <div class="d-flex gap-2 mb-2">
+                            <textarea asp-for="Description" class="form-control" rows="4" placeholder="Despre ce este acest bookmark?"></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+
+                            <div class="d-flex gap-2 mb-2 mt-2">
                                 <button type="button" class="btn btn-sm btn-outline-info" title="Funcționalitate AI (urmează a fi implementată)">
                                     <i class="bi bi-magic"></i> Sugerează cu AI
                                 </button>
                             </div>
-                            <textarea asp-for="Description" class="form-control" rows="4" placeholder="Despre ce este acest bookmark?"></textarea>
-                            <span asp-validation-for="Description" class="text-danger"></span>
                         </div>
 
                         <div class="mb-3">

@@ -44,7 +44,7 @@ namespace dotNet_Project.Controllers
 
         // 2. CREARE (Create) - Formularul
         [HttpGet]
-        public IActionResult Create()
+        public IActionResult New()
         {
             // Trimitem lista de categorii către View pentru Dropdown
             ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name");
@@ -54,8 +54,9 @@ namespace dotNet_Project.Controllers
         // 2. CREARE (Create) - Procesarea datelor trimise (POST)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Bookmark bookmark)
+        public async Task<IActionResult> New(Bookmark bookmark)
         {
+
             var userId = _userManager.GetUserId(User);
             bookmark.UserId = userId;
             bookmark.CreatedAt = DateTime.Now; // Atentie: Asigura-te ca proprietatea din Model se numeste CreatedAt sau DateCreated
