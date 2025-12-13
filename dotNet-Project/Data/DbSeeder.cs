@@ -9,6 +9,7 @@ namespace dotNet_Project.Data
         {
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
 
             // 1. Definim rolurile
             string[] roleNames = { "Admin", "User" };
@@ -62,6 +63,26 @@ namespace dotNet_Project.Data
                     await userManager.AddToRoleAsync(newUser, "User");
                 }
             }
+
+            var categories = new List<Category>
+            {
+                new Category { Name = "Valorant"},
+                new Category { Name = "Tree"},
+                new Category { Name = "Cats"}
+            };
+
+            // Verificăm fiecare categorie dacă există deja în baza de date
+            foreach (var cat in categories)
+            {
+                // Verificăm dacă există deja o categorie cu acest nume
+                if (!context.Categories.Any(c => c.Name == cat.Name))
+                {
+                    context.Categories.Add(cat);
+                }
+            }
+
+            await context.SaveChangesAsync();
+
         }
     }
 }
