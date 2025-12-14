@@ -184,6 +184,7 @@ namespace dotNet_Project.Controllers
             {
                 _context.Update(existingBookmark);
                 await _context.SaveChangesAsync();
+                await DeleteOrphanTags();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -233,6 +234,7 @@ namespace dotNet_Project.Controllers
 
             _context.Bookmarks.Remove(bookmark);
             await _context.SaveChangesAsync();
+            await DeleteOrphanTags();
             return RedirectToAction(nameof(Index));
         }
 
@@ -264,5 +266,21 @@ namespace dotNet_Project.Controllers
 
             return View(bookmark);
         }
+
+        // Metodă ajutătoare pentru ștergerea tag-urilor orfane
+        private async Task DeleteOrphanTags()
+        {
+            // Căutăm tag-urile care nu mai au niciun bookmark asociat
+            var orphanTags = await _context.Tags
+                                   .Where(t => !t.Bookmarks.Any())
+                                   .ToListAsync();
+
+            if (orphanTags.Any())
+            {
+                _context.Tags.RemoveRange(orphanTags);
+                await _context.SaveChangesAsync();
+            }
+        }
+
     }
 }
