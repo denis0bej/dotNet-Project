@@ -12,7 +12,9 @@
                     <h4 class="mb-0">Adaugă un nou Bookmark</h4>
                 </div>
                 <div class="card-body">
-                    <form asp-action="New">
+                    <!-- explicităm controllerul și metoda POST -->
+                    <form asp-controller="Bookmarks" asp-action="New" method="post">
+                        @Html.AntiForgeryToken()
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                         <div class="mb-3">
@@ -34,12 +36,6 @@
                             <label asp-for="Description" class="form-label">Descriere</label>
                             <textarea asp-for="Description" class="form-control" rows="4" placeholder="Despre ce este acest bookmark?"></textarea>
                             <span asp-validation-for="Description" class="text-danger"></span>
-
-                            <div class="d-flex gap-2 mb-2 mt-2">
-                                <button type="button" class="btn btn-sm btn-outline-info" title="Funcționalitate AI (urmează a fi implementată)">
-                                    <i class="bi bi-magic"></i> Sugerează cu AI
-                                </button>
-                            </div>
                         </div>
 
                         <div class="mb-3">

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using dotNet_Project.Models;
 
 namespace dotNet_Project.Controllers
@@ -16,13 +17,14 @@ namespace dotNet_Project.Controllers
     public class BookmarksController : Controller
     {
         private readonly ApplicationDbContext _context;
-        // NOTA: Daca folosesti IdentityUser standard si nu ai clasa ApplicationUser, schimba mai jos in <IdentityUser>
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<BookmarksController> _logger;
 
-        public BookmarksController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public BookmarksController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ILogger<BookmarksController> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         // 1. LISTARE (Index) - Afișează doar bookmark-urile utilizatorului curent
@@ -42,7 +44,7 @@ namespace dotNet_Project.Controllers
             return View(myBookmarks);
         }
 
-        // 2. CREARE (Create) - Formularul
+        // 2. CREARE (New) - Formularul
         [HttpGet]
         public IActionResult New()
         {
@@ -51,18 +53,27 @@ namespace dotNet_Project.Controllers
             return View();
         }
 
-        // 2. CREARE (Create) - Procesarea datelor trimise (POST)
+        // 2. CREARE (New) - Procesarea datelor trimise (POST)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> New(Bookmark bookmark)
         {
-
             var userId = _userManager.GetUserId(User);
-            bookmark.UserId = userId;
-            bookmark.CreatedAt = DateTime.Now; // Atentie: Asigura-te ca proprietatea din Model se numeste CreatedAt sau DateCreated
 
+            // Setăm manual datele care lipsesc din formular
+            bookmark.UserId = userId;
+            bookmark.CreatedAt = DateTime.Now;
+
+            // --- SCOATEM ERORILE PENTRU CÂMPURILE PE CARE LE GESTIONĂM NOI ---
+
+            // 1. Scoatem UserId (pentru că l-am setat mai sus, dar validatorul a apucat să dea eroare înainte)
             ModelState.Remove("UserId");
-            ModelState.Remove("CreatedAt");
+
+            // 2. (Opțional, dar recomandat) Scoatem Navigation Properties
+            // Dacă ai pus '?' în model, liniile de mai jos nu mai sunt strict necesare, 
+            // dar sunt bune pentru siguranță.
+            ModelState.Remove("Category");
+            ModelState.Remove("User");
 
             if (ModelState.IsValid)
             {
@@ -71,7 +82,7 @@ namespace dotNet_Project.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-
+            // Dacă ajunge aici, înseamnă că lipsește Titlul sau CategoryId
             ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name");
             return View(bookmark);
         }
