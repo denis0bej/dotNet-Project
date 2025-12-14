@@ -269,6 +269,9 @@ namespace dotNet_Project.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("bit");
+
                     b.Property<string>("MediaUrl")
                         .HasColumnType("nvarchar(max)");
 

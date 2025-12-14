@@ -23,6 +23,8 @@ namespace dotNet_Project.Models
         public string? MediaUrl { get; set; }
 
         // Data creării (necesară pentru filtrarea "Cele mai recente")
+
+        public Boolean IsPublic { get; set; } = true;
         public DateTime CreatedAt { get; set; }
 
         // --- Relații (Foreign Keys) ---
