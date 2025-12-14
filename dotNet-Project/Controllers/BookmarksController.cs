@@ -35,7 +35,8 @@ namespace dotNet_Project.Controllers
 
             // Luăm doar bookmark-urile create de utilizatorul logat
             var myBookmarksQuery = _context.Bookmarks
-                                           .Where(b => b.UserId == userId);
+                       .Include(b => b.Tags) 
+                       .Where(b => b.UserId == userId);
 
             // NOTA: Decomenteaza linia de mai jos doar daca ai implementat relatia cu Category in modelul Bookmark
             // myBookmarksQuery = myBookmarksQuery.Include(b => b.Category);
@@ -59,21 +60,40 @@ namespace dotNet_Project.Controllers
         public async Task<IActionResult> New(Bookmark bookmark)
         {
             var userId = _userManager.GetUserId(User);
-
-            // Setăm manual datele care lipsesc din formular
             bookmark.UserId = userId;
             bookmark.CreatedAt = DateTime.Now;
 
-            // --- SCOATEM ERORILE PENTRU CÂMPURILE PE CARE LE GESTIONĂM NOI ---
+            // --- LOGICA PENTRU TAG-URI ---
+            if (!string.IsNullOrEmpty(bookmark.TagString))
+            {
+                // 1. Spargem textul în cuvinte (ex: "soare, mare" -> ["soare", "mare"])
+                var tagNames = bookmark.TagString.Split(',', StringSplitOptions.RemoveEmptyEntries);
 
-            // 1. Scoatem UserId (pentru că l-am setat mai sus, dar validatorul a apucat să dea eroare înainte)
+                foreach (var tagName in tagNames)
+                {
+                    var cleanName = tagName.Trim();
+                    if (string.IsNullOrEmpty(cleanName)) continue;
+
+                    // 2. Căutăm dacă există deja tag-ul în baza de date
+                    var existingTag = await _context.Tags
+                                            .FirstOrDefaultAsync(t => t.Name == cleanName);
+
+                    if (existingTag != null)
+                    {
+                        bookmark.Tags.Add(existingTag);
+                    }
+                    else
+                    {
+                        // 3. Dacă nu există, creăm unul nou
+                        bookmark.Tags.Add(new Tag { Name = cleanName });
+                    }
+                }
+            }
+
             ModelState.Remove("UserId");
-
-            // 2. (Opțional, dar recomandat) Scoatem Navigation Properties
-            // Dacă ai pus '?' în model, liniile de mai jos nu mai sunt strict necesare, 
-            // dar sunt bune pentru siguranță.
             ModelState.Remove("Category");
             ModelState.Remove("User");
+            ModelState.Remove("Tags"); // Nu validăm colecția, validăm doar string-ul dacă e cazul
 
             if (ModelState.IsValid)
             {
@@ -82,7 +102,6 @@ namespace dotNet_Project.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Dacă ajunge aici, înseamnă că lipsește Titlul sau CategoryId
             ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name");
             return View(bookmark);
         }
@@ -93,16 +112,23 @@ namespace dotNet_Project.Controllers
         {
             if (id == null) return NotFound();
 
-            var bookmark = await _context.Bookmarks.FindAsync(id);
+            // IMPORTANT: Includem Tags aici!
+            var bookmark = await _context.Bookmarks
+                                 .Include(b => b.Tags)
+                                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (bookmark == null) return NotFound();
 
-            // VERIFICARE CRITICĂ: Utilizatorul are voie să editeze DOAR propriile bookmark-uri 
             var currentUserId = _userManager.GetUserId(User);
             if (bookmark.UserId != currentUserId)
             {
                 return Forbid();
             }
+
+            // --- POPULĂM INPUTUL DIN VIEW ---
+            // Transformăm lista de obiecte Tag într-un string (ex: "Tag1, Tag2")
+            var tagNames = bookmark.Tags.Select(t => t.Name);
+            bookmark.TagString = string.Join(", ", tagNames);
 
             ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name", bookmark.CategoryId);
             return View(bookmark);
@@ -117,44 +143,54 @@ namespace dotNet_Project.Controllers
 
             var currentUserId = _userManager.GetUserId(User);
 
-            // 1. Luăm bookmark-ul vechi din baza de date (fără tracking)
-            var existingBookmark = await _context.Bookmarks.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id);
+            // 1. Încărcăm bookmark-ul din bază CU TOT CU TAG-URI (pentru a le putea modifica)
+            var existingBookmark = await _context.Bookmarks
+                                         .Include(b => b.Tags)
+                                         .FirstOrDefaultAsync(b => b.Id == id);
 
-            // Verificăm permisiunea
             if (existingBookmark == null || existingBookmark.UserId != currentUserId)
             {
                 return Forbid();
             }
 
-            // --- CE LIPSEA LA TINE (ÎNCEPUT) ---
+            // Actualizăm datele simple
+            existingBookmark.Title = bookmark.Title;
+            existingBookmark.Description = bookmark.Description;
+            existingBookmark.MediaUrl = bookmark.MediaUrl;
+            existingBookmark.CategoryId = bookmark.CategoryId;
+            // Nu actualizăm UserId sau CreatedAt
 
-            // 2. Păstrăm datele critice care nu vin din formular
-            bookmark.UserId = currentUserId;                 // Ne asigurăm că rămâne același user
-            bookmark.CreatedAt = existingBookmark.CreatedAt; // IMPORTANT: Recuperăm data originală! Altfel devine 0001.
+            // --- ACTUALIZARE TAG-URI ---
+            // Ștergem legăturile vechi (doar din memorie momentan)
+            existingBookmark.Tags.Clear();
 
-            // 3. Ștergem erorile de validare pentru câmpurile completate manual
-            ModelState.Remove("UserId");
-            ModelState.Remove("CreatedAt");
-
-            // --- CE LIPSEA LA TINE (SFÂRȘIT) ---
-
-            if (ModelState.IsValid)
+            if (!string.IsNullOrEmpty(bookmark.TagString))
             {
-                try
+                var tagNames = bookmark.TagString.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var tagName in tagNames)
                 {
-                    _context.Update(bookmark);
-                    await _context.SaveChangesAsync();
+                    var cleanName = tagName.Trim();
+                    if (string.IsNullOrEmpty(cleanName)) continue;
+
+                    // Căutăm tag-ul existent sau creăm unul nou
+                    var tag = await _context.Tags.FirstOrDefaultAsync(t => t.Name == cleanName)
+                              ?? new Tag { Name = cleanName };
+
+                    existingBookmark.Tags.Add(tag);
                 }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!BookmarkExists(bookmark.Id)) return NotFound();
-                    else throw;
-                }
-                return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name", bookmark.CategoryId);
-            return View(bookmark);
+            try
+            {
+                _context.Update(existingBookmark);
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!BookmarkExists(bookmark.Id)) return NotFound();
+                else throw;
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         // 4. ȘTERGERE (Delete) - Confirmare

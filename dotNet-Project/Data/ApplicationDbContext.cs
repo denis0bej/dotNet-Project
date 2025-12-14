@@ -13,5 +13,6 @@ namespace dotNet_Project.Data
         // Aici vei adauga mai tarziu:
         public DbSet<Bookmark> Bookmarks { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<Tag> Tags { get; set; }
     }
 }

@@ -45,9 +45,14 @@ namespace dotNet_Project.Models
 
         // --- Colecții ---
 
-        // NOTĂ: DE FACUT Comment, Like, Tag
+        // Relația Many-to-Many: Un bookmark are mai multe tag-uri
+        public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();
+
+        [NotMapped]
+        public string? TagString { get; set; }
+
+        // NOTĂ: DE FACUT Comment, Like
         //public virtual ICollection<Comment> Comments { get; set; }
         //public virtual ICollection<Like> Likes { get; set; }
-        //public virtual ICollection<Tag> Tags { get; set; }
     }
 }
