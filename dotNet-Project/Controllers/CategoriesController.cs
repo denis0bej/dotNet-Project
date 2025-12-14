@@ -74,10 +74,10 @@ namespace dotNet_Project.Controllers
             if (category == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
-            // Daca nu e userul specific nu are voie sa editeze (chiar daca e admin)
+            // Daca nu e userul specific, nu are voie sa editeze (chiar daca e admin)
             if (category.UserId != currentUserId)
             {
-                RedirectToAction("AccessDenied");
+                return RedirectToAction("Index");
             }
 
             return View(category);
@@ -97,7 +97,7 @@ namespace dotNet_Project.Controllers
             var currentUserId = _userManager.GetUserId(User);
             if (originalCategory.UserId != currentUserId)
             {
-                RedirectToAction("AccessDenied");
+                return RedirectToAction("Index");
             }
 
             ModelState.Remove("UserId");

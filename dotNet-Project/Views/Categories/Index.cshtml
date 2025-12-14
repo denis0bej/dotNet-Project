@@ -1,27 +1,27 @@
 ﻿@model IEnumerable<dotNet_Project.Models.Category>
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
 
 @{
     ViewData["Title"] = "Index";
 }
 
-<h1>Categoriile Mele</h1>
-
-<p>
-    <a asp-action="New" class="btn btn-primary">Create New</a>
-</p>
+<h1>My Categories</h1>
 
 <table class="table">
     <thead>
         <tr>
             <th>
-                @Html.DisplayNameFor(model => model.Name)
+                Name
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.IsPublic)
+                Vizibility
             </th>
-            <th>Acțiuni</th>
+            <th>Actions</th>
         </tr>
     </thead>
+    
+
     <tbody>
         @foreach (var item in Model)
         {
@@ -30,13 +30,24 @@
                     @Html.DisplayFor(modelItem => item.Name)
                 </td>
                 <td>
-                    @* Afișăm DA sau NU în loc de checkbox bifat/nebifat *@
-                    @(item.IsPublic ? "Publică" : "Privată")
+                    @(item.IsPublic ? "Public" : "Private")
                 </td>
                 <td>
-                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Edit</a>
+                    @if (User.IsInRole("Admin") || item.UserId == UserManager.GetUserId(User))
+                    {
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Delete</a>
+                    }
+
+                    @if (item.UserId == UserManager.GetUserId(User))
+                    {
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Edit</a>
+                    }
                 </td>
             </tr>
         }
     </tbody>
 </table>
+
+<p>
+    <a asp-action="New" class="btn btn-primary">Add New Category</a>
+</p>
