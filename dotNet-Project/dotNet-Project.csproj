@@ -9,6 +9,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="wwwroot\images\cat1.jpg" />
+    <None Include="wwwroot\images\cat2.jpg" />
+    <None Include="wwwroot\images\cat3.jpg" />
+    <None Include="wwwroot\images\tree1.jpg" />
+    <None Include="wwwroot\images\tree2.jpg" />
+    <None Include="wwwroot\images\tree3.jpg" />
+    <None Include="wwwroot\images\valorant1.jpg" />
+    <None Include="wwwroot\images\valorant2.jpg" />
+    <None Include="wwwroot\images\valorant3.jpg" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.3" />
