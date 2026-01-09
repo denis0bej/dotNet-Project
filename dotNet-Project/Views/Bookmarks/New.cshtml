@@ -23,12 +23,29 @@
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="CategoryId" class="form-label">Category</label>
-                            <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.Categories">
-                                <option value="">-- Select Category --</option>
-                            </select>
-                            <span asp-validation-for="CategoryId" class="text-danger"></span>
-                            <small class="text-muted">Can't find the category? Create a new one from the menu!</small>
+                            <label class="form-label fw-bold">Select Categories</label>
+                            <div class="card p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+                                @if (ViewBag.CategoryList != null)
+                                {
+                                    @foreach (var category in (IEnumerable<SelectListItem>)ViewBag.CategoryList)
+                                    {
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="selectedCategories"
+                                                   value="@category.Value"
+                                                   id="cat_@category.Value">
+                                            <label class="form-check-label" for="cat_@category.Value">
+                                                @category.Text
+                                            </label>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="text-muted small">You don't have any categories yet. Please create one first!</div>
+                                }
+                            </div>
+                            <small class="text-muted">You can select multiple folders.</small>
                         </div>
 
                         <div class="mb-3">
@@ -38,12 +55,20 @@
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="MediaUrl" class="form-label">Conținut Media (Link)</label>
+                            <label asp-for="MediaUrl" class="form-label">Media Content (Link)</label>
                             <input asp-for="MediaUrl" class="form-control" placeholder="https://..." />
                             <div class="form-text">You can add a video/image link (ex: YouTube).</div>
                             <span asp-validation-for="MediaUrl" class="text-danger"></span>
                         </div>
-
+                        <div class="mb-3 form-check">
+                            <input class="form-check-input" type="checkbox" asp-for="IsPublic" />
+                            <label class="form-check-label" asp-for="IsPublic">
+                                Public
+                            </label>
+                            <div class="form-text">
+                                Check to make it visible to everyone.
+                            </div>
+                        </div>
                         <div class="d-flex justify-content-between mt-4">
                             <a asp-action="Index" class="btn btn-secondary">Cancel</a>
                             <button type="submit" class="btn btn-success">Save</button>

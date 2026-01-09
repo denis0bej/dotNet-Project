@@ -168,5 +168,81 @@ namespace dotNet_Project.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // GET: Categories/Profile/userid-string-aici
+        public async Task<IActionResult> Profile(string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                // Daca nu se specifica un id, redirectionam catre profilul utilizatorului curent
+                userId = _userManager.GetUserId(User);
+            }
+
+            if (userId == null) return NotFound();
+
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Admin");
+
+            // Selectam categoriile utilizatorului pe al carui profil ne aflăm
+            var query = _context.Categories
+                                .Include(c => c.User)
+                                .Where(c => c.UserId == userId);
+
+            // Aplicam logica de vizibilitate:
+            if (currentUserId != userId && !isAdmin)
+            {
+                query = query.Where(c => c.IsPublic == true);
+            }
+
+            var categories = await query.ToListAsync();
+
+            // (Optional) Gasim numele utilizatorului pentru a-l afișa în titlu
+            var userProfile = await _userManager.FindByIdAsync(userId);
+            ViewData["UserProfileName"] = userProfile?.UserName ?? "User";
+            ViewData["IsOwner"] = (currentUserId == userId);
+
+            return View(categories);
+        }
+
+        // GET: Categories/Show/5
+        public async Task<IActionResult> Show(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Admin");
+
+            // Incarcam Categoria IMPREUNA cu Bookmark-urile si User-ul care a creat bookmark-ul
+            var category = await _context.Categories
+                                         .Include(c => c.User)
+                                         .Include(c => c.Bookmarks)
+                                         .ThenInclude(b => b.User) // Ca sa afisam autorul bookmark-ului
+                                         .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (category == null) return NotFound();
+
+            // --- VERIFICARI SECURITATE CATEGORIE (FOLDER) ---
+
+            // 1. Daca categoria e privata si nu e a mea (si nu sunt admin) -> Nu am voie
+            if (category.UserId != currentUserId && !category.IsPublic && !isAdmin)
+            {
+                return Forbid();
+            }
+
+            // --- FILTRARE CONTINUT (Ce bookmark-uri vad in folder?) ---
+
+            // Daca sunt proprietarul folderului sau Admin -> Vad toate bookmark-urile (si cele private)
+            // Daca sunt vizitator -> Vad doar bookmark-urile PUBLICE din aceasta categorie
+            if (category.UserId != currentUserId && !isAdmin)
+            {
+                category.Bookmarks = category.Bookmarks.Where(b => b.IsPublic == true).ToList();
+            }
+
+            // Trimitem flag-uri catre View pentru butoane
+            ViewData["IsOwner"] = (category.UserId == currentUserId);
+            ViewData["IsAdmin"] = isAdmin;
+
+            return View(category);
+        }
+
     }
 }

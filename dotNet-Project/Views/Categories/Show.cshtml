@@ -1,0 +1,90 @@
+﻿@model dotNet_Project.Models.Category
+
+@{
+    ViewData["Title"] = "Category: " + Model.Name;
+    bool isOwner = (bool)ViewData["IsOwner"];
+    bool isAdmin = (bool)ViewData["IsAdmin"];
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="display-6">Category: <strong>@Model.Name</strong></h1>
+            <p class="text-muted">
+                Created by: <a asp-controller="Categories" asp-action="Profile" asp-route-userId="@Model.UserId">@Model.User?.UserName</a>
+
+                @if (Model.IsPublic)
+                {
+                    <span class="badge bg-success ms-2">Public Folder</span>
+                }
+                else
+                {
+                    <span class="badge bg-secondary ms-2">Private Folder</span>
+                }
+            </p>
+        </div>
+
+        @if (isOwner)
+        {
+            <a asp-controller="Bookmarks" asp-action="New" class="btn btn-primary">
+                + Add Bookmark Here
+            </a>
+        }
+    </div>
+
+    <hr />
+
+    @if (!Model.Bookmarks.Any())
+    {
+        <div class="alert alert-warning">
+            This category is empty.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var bookmark in Model.Bookmarks)
+            {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100">
+                        @if (!string.IsNullOrEmpty(bookmark.MediaUrl))
+                        {
+                            <img src="@bookmark.MediaUrl" class="card-img-top" style="height: 200px; object-fit: cover;" alt="Bookmark Image">
+                        }
+
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <a asp-controller="Bookmarks" asp-action="Details" asp-route-id="@bookmark.Id" class="text-decoration-none text-dark">
+                                    @bookmark.Title
+                                </a>
+                            </h5>
+                            <p class="card-text text-muted small">
+                                @if (bookmark.Description?.Length > 100)
+                                {
+                                    @bookmark.Description.Substring(0, 100) <text>...</text>
+                                }
+                                else
+                                {
+                                    @bookmark.Description
+                                }
+                            </p>
+
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <small class="text-muted">@bookmark.CreatedAt.ToString("dd MMM yyyy")</small>
+
+                                @if (!bookmark.IsPublic)
+                                {
+                                    <span class="badge bg-secondary">Private Item</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="mt-3">
+        <a asp-action="Index" class="btn btn-outline-secondary">Back to Categories</a>
+    </div>
+</div>
