@@ -1,7 +1,7 @@
 ﻿@model dotNet_Project.Models.Bookmark
 
 @{
-    ViewData["Title"] = "Adaugă Bookmark";
+    ViewData["Title"] = "Add a new Bookmark";
 }
 
 <div class="container mt-4">
@@ -9,7 +9,7 @@
         <div class="col-md-8">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Adaugă un nou Bookmark</h4>
+                    <h4 class="mb-0">Add a new Bookmark</h4>
                 </div>
                 <div class="card-body">
                     <form asp-controller="Bookmarks" asp-action="New" method="post">
@@ -17,36 +17,36 @@
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                         <div class="mb-3">
-                            <label asp-for="Title" class="form-label">Titlu</label>
-                            <input asp-for="Title" class="form-control" placeholder="Ex: Tutorial ASP.NET Core" />
+                            <label asp-for="Title" class="form-label">Title</label>
+                            <input asp-for="Title" class="form-control" placeholder="Ex: Smartest cat in Romania" />
                             <span asp-validation-for="Title" class="text-danger"></span>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="CategoryId" class="form-label">Categorie</label>
+                            <label asp-for="CategoryId" class="form-label">Category</label>
                             <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.Categories">
-                                <option value="">-- Selectează Categoria --</option>
+                                <option value="">-- Select Category --</option>
                             </select>
                             <span asp-validation-for="CategoryId" class="text-danger"></span>
-                            <small class="text-muted">Nu găsești categoria? Creează una nouă din meniu.</small>
+                            <small class="text-muted">Can't find the category? Create a new one from the menu!</small>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="Description" class="form-label">Descriere</label>
-                            <textarea asp-for="Description" class="form-control" rows="4" placeholder="Despre ce este acest bookmark?"></textarea>
+                            <label asp-for="Description" class="form-label">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="4" placeholder="What is this Bookmark about?"></textarea>
                             <span asp-validation-for="Description" class="text-danger"></span>
                         </div>
 
                         <div class="mb-3">
                             <label asp-for="MediaUrl" class="form-label">Conținut Media (Link)</label>
                             <input asp-for="MediaUrl" class="form-control" placeholder="https://..." />
-                            <div class="form-text">Poți introduce un link direct către o imagine sau un video (ex: YouTube).</div>
+                            <div class="form-text">You can add a video/image link (ex: YouTube).</div>
                             <span asp-validation-for="MediaUrl" class="text-danger"></span>
                         </div>
 
                         <div class="d-flex justify-content-between mt-4">
-                            <a asp-action="Index" class="btn btn-secondary">Înapoi la listă</a>
-                            <button type="submit" class="btn btn-success">Salvează Bookmark</button>
+                            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-success">Save</button>
                         </div>
                     </form>
                 </div>

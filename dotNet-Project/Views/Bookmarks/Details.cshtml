@@ -1,14 +1,14 @@
 ﻿@model dotNet_Project.Models.Bookmark
 
 @{
-    ViewData["Title"] = "Detalii Bookmark";
+    ViewData["Title"] = "Bookmark Details";
 }
 
 <div class="container mt-5">
     <div class="card shadow-lg">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h3 class="mb-0">@Model.Title</h3>
-            <span class="badge bg-light text-primary">Categorie ID: @Model.CategoryId</span>
+            <span class="badge bg-light text-primary">@Model.CategoryId</span>
         </div>
         <div class="card-body">
             <div class="row">
@@ -32,7 +32,7 @@
                         else
                         {
                             <div class="alert alert-secondary">
-                                <i class="bi bi-link-45deg"></i> Link extern:
+                                <i class="bi bi-link-45deg"></i> External link:
                                 <a href="@Model.MediaUrl" target="_blank">@Model.MediaUrl</a>
                             </div>
                         }
@@ -41,28 +41,30 @@
                     {
                         <div class="text-center p-5 bg-light rounded">
                             <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
-                            <p>Fără conținut media</p>
+                            <p>No media content</p>
                         </div>
                     }
                 </div>
 
                 <div class="col-md-6">
-                    <h5>Descriere</h5>
+                    <h5>Description</h5>
                     <p class="lead" style="font-size: 1rem; white-space: pre-wrap;">@Model.Description</p>
 
                     <hr />
 
                     <dl class="row">
-                        <dt class="col-sm-4">Data Creării</dt>
+                        <dt class="col-sm-4">Date added</dt>
                         <dd class="col-sm-8">@Model.CreatedAt.ToString("g")</dd>
-
-                        <dt class="col-sm-4">Autor (User ID)</dt>
-                        <dd class="col-sm-8">@Model.UserId</dd>
+                        @if (@Model.User != null)
+                        {
+                            <dt class="col-sm-4">Author</dt>
+                            <dd class="col-sm-8">@Model.User.UserName</dd>
+                        }
                     </dl>
 
                     <div class="mt-4 d-flex gap-2">
-                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Editează</a>
-                        <a asp-action="Index" class="btn btn-secondary">Înapoi la Listă</a>
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
+                        <a asp-action="Index" class="btn btn-secondary">Back to list</a>
                     </div>
                 </div>
             </div>

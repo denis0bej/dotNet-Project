@@ -30,7 +30,8 @@ namespace dotNet_Project.Controllers
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            var userId = _userManager.GetUserId(User);
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Admin");
 
             var myBookmarksQuery = _context.Bookmarks
                         .Include(b => b.Tags)
@@ -43,14 +44,16 @@ namespace dotNet_Project.Controllers
 
         // 2. CREARE (New) - Formularul
         [HttpGet]
+        [Authorize(Roles = "Admin,User")]
         public IActionResult New()
         {
             ViewBag.Categories = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Categories, "Id", "Name");
-            return View();
+            return View(new Bookmark());
         }
 
         // 2. CREARE (New) - Procesarea datelor (MODIFICAT)
         [HttpPost]
+        [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> New(Bookmark bookmark)
         {
@@ -79,20 +82,24 @@ namespace dotNet_Project.Controllers
 
         // 3. EDITARE (Edit) - Formularul (MODIFICAT)
         [HttpGet]
+        [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
 
             var bookmark = await _context.Bookmarks
-                                 .Include(b => b.Tags)
-                                 .FirstOrDefaultAsync(b => b.Id == id);
+                                         .Include(b => b.Tags)
+                                         .FirstOrDefaultAsync(b => b.Id == id);
 
             if (bookmark == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
+
+            // Doar proprietarul poate edita (chiar daca esti Admin, nu modifici continutul altuia)
             if (bookmark.UserId != currentUserId)
             {
-                return Forbid();
+                // Redirectionam catre Index daca nu e proprietar (securitate)
+                return RedirectToAction(nameof(Index));
             }
 
             // --- MODIFICARE: AM SCOS POPULAREA INPUTULUI DE TAG-URI ---
@@ -104,6 +111,7 @@ namespace dotNet_Project.Controllers
 
         // 3. EDITARE (Edit) - Salvarea modificărilor (MODIFICAT)
         [HttpPost]
+        [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Bookmark bookmark)
         {
@@ -112,15 +120,16 @@ namespace dotNet_Project.Controllers
             var currentUserId = _userManager.GetUserId(User);
 
             var existingBookmark = await _context.Bookmarks
-                                         .Include(b => b.Tags)
-                                         .FirstOrDefaultAsync(b => b.Id == id);
+                                                 .Include(b => b.Tags)
+                                                 .FirstOrDefaultAsync(b => b.Id == id);
 
+            // Verificare securitate: doar proprietarul editeaza
             if (existingBookmark == null || existingBookmark.UserId != currentUserId)
             {
-                return Forbid();
+                return Forbid(); // Sau RedirectToAction("Index")
             }
 
-            // Actualizăm datele simple
+            // Actualizare campuri
             existingBookmark.Title = bookmark.Title;
             existingBookmark.Description = bookmark.Description;
             existingBookmark.MediaUrl = bookmark.MediaUrl;
@@ -147,6 +156,7 @@ namespace dotNet_Project.Controllers
 
         // 4. ȘTERGERE (Delete)
         [HttpGet]
+        [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -159,7 +169,9 @@ namespace dotNet_Project.Controllers
             if (bookmark == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
-            if (bookmark.UserId != currentUserId)
+
+            // Adminul SAU Proprietarul pot sterge [cite: 2]
+            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin"))
             {
                 return Forbid();
             }
@@ -169,13 +181,18 @@ namespace dotNet_Project.Controllers
 
         // 4. ȘTERGERE (Delete) - Confirmat
         [HttpPost, ActionName("Delete")]
+        [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var bookmark = await _context.Bookmarks.FindAsync(id);
 
+            if (bookmark == null) return NotFound();
+
             var currentUserId = _userManager.GetUserId(User);
-            if (bookmark == null || bookmark.UserId != currentUserId)
+
+            // Verificare finala de securitate inainte de stergere efectiva
+            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin"))
             {
                 return Forbid();
             }
@@ -188,11 +205,6 @@ namespace dotNet_Project.Controllers
             await DeleteOrphanTags();
 
             return RedirectToAction(nameof(Index));
-        }
-
-        private bool BookmarkExists(int id)
-        {
-            return _context.Bookmarks.Any(e => e.Id == id);
         }
 
         // 5. DETALII
@@ -222,6 +234,10 @@ namespace dotNet_Project.Controllers
                 _context.Tags.RemoveRange(orphanTags);
                 await _context.SaveChangesAsync();
             }
+        }
+        private bool BookmarkExists(int id)
+        {
+            return _context.Bookmarks.Any(e => e.Id == id);
         }
 
         // 6. VOTARE (AJAX) - Modificat să returneze JSON

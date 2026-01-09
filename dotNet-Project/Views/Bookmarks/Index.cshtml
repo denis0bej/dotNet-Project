@@ -8,16 +8,16 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Bookmark-urile Mele</h1>
+        <h1>My Bookmarks</h1>
         <a asp-action="New" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Adaugă Nou
+            <i class="bi bi-plus-circle"></i> Add New
         </a>
     </div>
 
     @if (!Model.Any())
     {
         <div class="alert alert-info">
-            Nu ai adăugat niciun bookmark încă. Începe acum!
+            Look how much empty... Fill it with some bookmarks!
         </div>
     }
 
@@ -30,6 +30,8 @@
 
             <div class="col-md-4 mb-4">
                 <div class="card h-100 shadow-sm">
+
+                    @* --- SECTIUNE IMAGINE --- *@
                     @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
                     {
                         <img src="@item.MediaUrl" class="card-img-top" alt="@item.Title" style="height: 200px; object-fit: cover;">
@@ -52,12 +54,14 @@
                         </div>
 
                         <h6 class="card-subtitle mb-2 text-muted">
-                            <i class="bi bi-folder"></i> Categ ID: @item.CategoryId
+                            <i class="bi bi-folder"></i> Category: @item.CategoryId
                         </h6>
+
                         <p class="card-text text-truncate">
                             @item.Description
                         </p>
-                        <small class="text-muted">Adăugat: @item.CreatedAt.ToString("dd/MM/yyyy")</small>
+
+                        <small class="text-muted">Date added: @item.CreatedAt.ToString("dd/MM/yyyy")</small>
 
                         <div class="mt-2">
                             @if (item.Tags != null)
@@ -73,7 +77,10 @@
                     </div>
 
                     <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
-                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Vezi detalii</a>
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                            View
+                        </a>
+
                         <div>
                             <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">Edit <i class="bi bi-pencil"></i></a>
                             <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Delete <i class="bi bi-trash"></i></a>
