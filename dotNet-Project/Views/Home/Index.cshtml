@@ -1,8 +1,140 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@using System.Security.Claims
+@model IEnumerable<dotNet_Project.Models.Bookmark>
+
+@{
+    ViewData["Title"] = "Home Feed";
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-4 mb-4 text-center">
+    <h1 class="display-5 mb-3">Descoperă Idei Noi</h1>
+
+    <div class="btn-group" role="group">
+        <a asp-action="Index" asp-route-sortOrder="Recent"
+           class="btn @(ViewBag.CurrentSort != "Popular" ? "btn-dark" : "btn-outline-dark")">
+            <i class="bi bi-clock"></i> Cele mai Recente
+        </a>
+        <a asp-action="Index" asp-route-sortOrder="Popular"
+           class="btn @(ViewBag.CurrentSort == "Popular" ? "btn-danger" : "btn-outline-danger")">
+            <i class="bi bi-fire"></i> Cele mai Populare
+        </a>
+    </div>
 </div>
+
+<div class="container">
+    @if (!Model.Any())
+    {
+        <div class="alert alert-warning text-center">
+            Nu există bookmark-uri publice momentan. Fii tu primul care postează într-o categorie publică!
+        </div>
+    }
+
+    <div class="row">
+        @foreach (var item in Model)
+        {
+            // Verificăm Like-ul pentru userul curent
+            var isLikedByMe = item.Votes.Any(v => v.UserId == currentUserId);
+            var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
+
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm border-0">
+
+                    <div style="position: relative;">
+                        @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
+                        {
+                            <img src="@item.MediaUrl" class="card-img-top rounded-top" alt="@item.Title" style="height: 250px; object-fit: cover;">
+                        }
+                        else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
+                        {
+                            <div class="card-img-top bg-black d-flex justify-content-center align-items-center" style="height: 250px;">
+                                <i class="bi bi-youtube text-danger fs-1"></i>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="card-img-top bg-light d-flex justify-content-center align-items-center" style="height: 250px;">
+                                <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
+                            </div>
+                        }
+
+                        <span class="badge bg-light text-dark shadow-sm" style="position: absolute; top: 10px; right: 10px; opacity: 0.9;">
+                            @item.Category?.Name
+                        </span>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title fw-bold text-truncate" style="max-width: 80%;">@item.Title</h5>
+
+                            @if (currentUserId != null)
+                            {
+                                <div class="d-flex align-items-center pointer" style="cursor: pointer;" onclick="toggleLike(@item.Id)">
+                                    <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1"></i>
+                                    <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center">
+                                    <a asp-area="Identity" asp-page="/Account/Login" class="text-decoration-none text-dark">
+                                        <i class="bi bi-heart fs-4 me-1"></i>
+                                        <span class="fw-bold">@item.LikeCount</span>
+                                    </a>
+                                </div>
+                            }
+                        </div>
+
+                        <p class="card-subtitle text-muted mb-2 small">
+                            <i class="bi bi-person-circle"></i> @(item.User?.UserName ?? "Unknown")
+                        </p>
+
+                        <p class="card-text text-truncate">@item.Description</p>
+                    </div>
+
+                    <div class="card-footer bg-white border-top-0">
+                        <a asp-controller="Bookmarks" asp-action="Details" asp-route-id="@item.Id" class="btn btn-primary w-100 rounded-pill">
+                            Vezi Pin-ul
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        async function toggleLike(bookmarkId) {
+            try {
+                const response = await fetch('/Bookmarks/ToggleLike', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': document.getElementsByName('__RequestVerificationToken')[0]?.value
+                    },
+                    body: JSON.stringify(bookmarkId)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
+                    const countSpan = document.getElementById(`like-count-${bookmarkId}`);
+
+                    countSpan.innerText = data.newCount;
+
+                    if (data.isLiked) {
+                        heartIcon.classList.remove('bi-heart');
+                        heartIcon.classList.add('bi-heart-fill', 'text-danger', 'animate-like');
+                        setTimeout(() => heartIcon.classList.remove('animate-like'), 400);
+                    } else {
+                        heartIcon.classList.add('bi-heart');
+                        heartIcon.classList.remove('bi-heart-fill', 'text-danger');
+                    }
+                }
+            } catch (error) {
+                console.error("Eroare:", error);
+            }
+        }
+    </script>
+}
