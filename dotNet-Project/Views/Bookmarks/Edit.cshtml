@@ -40,13 +40,6 @@
                             <span asp-validation-for="MediaUrl" class="text-danger"></span>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="TagString" class="form-label">Tag-uri</label>
-                            <input asp-for="TagString" class="form-control" placeholder="Ex: programare, tutorial, csharp" />
-                            <div class="form-text">Separă etichetele prin virgulă.</div>
-                            <span asp-validation-for="TagString" class="text-danger"></span>
-                        </div>
-
                         <div class="d-flex justify-content-between mt-4">
                             <a asp-action="Index" class="btn btn-secondary">Anulează</a>
                             <button type="submit" class="btn btn-primary">Salvează Modificările</button>

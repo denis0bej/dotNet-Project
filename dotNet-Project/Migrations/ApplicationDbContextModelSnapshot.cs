@@ -269,6 +269,9 @@ namespace dotNet_Project.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("MediaUrl")
                         .HasColumnType("nvarchar(max)");
 
@@ -331,6 +334,30 @@ namespace dotNet_Project.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Tags");
+                });
+
+            modelBuilder.Entity("dotNet_Project.Models.Vote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookmarkId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookmarkId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Votes");
                 });
 
             modelBuilder.Entity("BookmarkTag", b =>
@@ -427,11 +454,35 @@ namespace dotNet_Project.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("dotNet_Project.Models.Vote", b =>
+                {
+                    b.HasOne("dotNet_Project.Models.Bookmark", "Bookmark")
+                        .WithMany("Votes")
+                        .HasForeignKey("BookmarkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("dotNet_Project.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Bookmark");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("dotNet_Project.Models.ApplicationUser", b =>
                 {
                     b.Navigation("Bookmarks");
 
                     b.Navigation("Categories");
+                });
+
+            modelBuilder.Entity("dotNet_Project.Models.Bookmark", b =>
+                {
+                    b.Navigation("Votes");
                 });
 
             modelBuilder.Entity("dotNet_Project.Models.Category", b =>

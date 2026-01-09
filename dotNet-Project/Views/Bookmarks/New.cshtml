@@ -12,7 +12,6 @@
                     <h4 class="mb-0">Adaugă un nou Bookmark</h4>
                 </div>
                 <div class="card-body">
-                    <!-- explicităm controllerul și metoda POST -->
                     <form asp-controller="Bookmarks" asp-action="New" method="post">
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -43,13 +42,6 @@
                             <input asp-for="MediaUrl" class="form-control" placeholder="https://..." />
                             <div class="form-text">Poți introduce un link direct către o imagine sau un video (ex: YouTube).</div>
                             <span asp-validation-for="MediaUrl" class="text-danger"></span>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="TagString" class="form-label">Tag-uri</label>
-                            <input asp-for="TagString" class="form-control" placeholder="Ex: programare, tutorial, csharp" />
-                            <div class="form-text">Separă etichetele prin virgulă.</div>
-                            <span asp-validation-for="TagString" class="text-danger"></span>
                         </div>
 
                         <div class="d-flex justify-content-between mt-4">
