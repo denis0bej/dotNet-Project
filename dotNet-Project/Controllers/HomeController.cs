@@ -24,38 +24,30 @@ namespace dotNet_Project.Controllers
         // Metoda Index primește un parametru opțional "sortOrder"
         public async Task<IActionResult> Index(string sortOrder)
         {
-            // Setăm filtrul curent în ViewBag pentru a ști ce buton să evidențiem în View
             ViewBag.CurrentSort = sortOrder;
 
-            // 1. Interogarea de bază:
-            // - Luăm bookmark-urile
-            // - Includem Categoria (să verificăm dacă e publică)
-            // - Includem User-ul (să afișăm cine a postat)
-            // - Includem Voturile (să vedem dacă am dat like)
+            // 1. Construim interogarea
             var bookmarksQuery = _context.Bookmarks
-                                         .Include(b => b.Category)
+                                         .Include(b => b.Categories) // <--- FOLOSIM LISTA (M-M)
                                          .Include(b => b.User)
                                          .Include(b => b.Votes)
-                                         .Where(b => b.Category.IsPublic == true); // DOAR cele publice
+                                         .Where(b => b.IsPublic) // Afișăm doar bookmark-urile publice
+                                         .AsQueryable();
 
-            // 2. Aplicăm Filtrarea (Sortarea)
+
+            // 3. Aplicăm Sortarea
             switch (sortOrder)
             {
                 case "Popular":
-                    // Ordonăm descrescător după numărul de like-uri
                     bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.LikeCount);
                     break;
-
                 case "Recent":
                 default:
-                    // Default: Cele mai noi primele
                     bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
                     break;
             }
 
-            // 3. Executăm interogarea
             var bookmarks = await bookmarksQuery.ToListAsync();
-
             return View(bookmarks);
         }
 
