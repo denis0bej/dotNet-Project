@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Xml.Linq;
 
 namespace dotNet_Project.Models
 {
@@ -22,18 +21,19 @@ namespace dotNet_Project.Models
         // Calea către imagine sau URL video
         public string? MediaUrl { get; set; }
 
-        // Data creării (necesară pentru filtrarea "Cele mai recente")
-
-        public Boolean IsPublic { get; set; } = true;
         public DateTime CreatedAt { get; set; }
+
+        // Câmp pentru popularitate (numărul total de like-uri)
+        public int LikeCount { get; set; } = 0;
+
+        // Relația cu voturile
+        public virtual ICollection<Vote> Votes { get; set; } = new List<Vote>();
 
         // --- Relații (Foreign Keys) ---
 
         // 1. Autorul Bookmark-ului
         [Required]
         public string UserId { get; set; }
-
-        // NOTĂ: DE FACUT ApplicationUser
 
         public virtual ApplicationUser? User { get; set; }
 
@@ -45,14 +45,12 @@ namespace dotNet_Project.Models
 
         // --- Colecții ---
 
-        // Relația Many-to-Many: Un bookmark are mai multe tag-uri
+        // IMPORTANT: Aceasta este linia care lipsește și cauzează eroarea.
+        // Trebuie să existe pentru ca EF Core și Controller-ul să funcționeze.
         public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();
 
-        [NotMapped]
-        public string? TagString { get; set; }
-
-        // NOTĂ: DE FACUT Comment, Like
-        //public virtual ICollection<Comment> Comments { get; set; }
-        //public virtual ICollection<Like> Likes { get; set; }
+        // NOTĂ: Am scos TagString (inputul manual), dar am păstrat Tags (relația din DB).
+        // [NotMapped]
+        // public string? TagString { get; set; }
     }
 }

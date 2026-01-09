@@ -1,9 +1,9 @@
-﻿@model IEnumerable<dotNet_Project.Models.Bookmark>
+@model IEnumerable<dotNet_Project.Models.Bookmark>
 @using Microsoft.AspNetCore.Identity
 @inject UserManager<ApplicationUser> UserManager
 
 @{
-    ViewData["Title"] = "Bookmarks";
+    ViewData["Title"] = "All Bookmarks";
     var currentUserId = UserManager.GetUserId(User);
 }
 
@@ -25,14 +25,18 @@
     <div class="row">
         @foreach (var item in Model)
         {
+            // COMBINARE LOGICA: Calculam si daca e owner, si daca a dat like
             bool isOwner = (item.UserId == currentUserId);
+            
+            var isLikedByMe = item.Votes != null && item.Votes.Any(v => v.UserId == currentUserId);
+            var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
 
             <div class="col-md-4 mb-4">
                 <div class="card h-100 shadow-sm">
 
                     @* --- SECTIUNE IMAGINE --- *@
-                    @if (!string.IsNullOrEmpty(item.MediaUrl) &&
-                                    (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg") || item.MediaUrl.EndsWith(".webp")))
+                    @if (!string.IsNullOrEmpty(item.MediaUrl) && 
+                        (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg") || item.MediaUrl.EndsWith(".webp")))
                     {
                         <img src="@item.MediaUrl" class="card-img-top" alt="@item.Title" style="height: 200px; object-fit: cover;">
                     }
@@ -44,19 +48,27 @@
                     }
 
                     <div class="card-body">
-                        @* --- TITLU + BADGE PRIVAT --- *@
+                        @* --- TITLU + BADGE PRIVAT + LIKE BUTTON --- *@
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0 text-truncate" title="@item.Title">@item.Title</h5>
+                            <div style="max-width: 75%;">
+                                <h5 class="card-title mb-0 text-truncate" title="@item.Title">@item.Title</h5>
+                                
+                                @if (!item.IsPublic)
+                                {
+                                    <span class="badge bg-danger mt-1" title="Private Bookmark">
+                                        <i class="bi bi-lock-fill"></i> Private
+                                    </span>
+                                }
+                            </div>
 
-                            @if (!item.IsPublic)
-                            {
-                                <span class="badge bg-danger" title="Private Bookmark">
-                                    <i class="bi bi-lock-fill"></i>
-                                </span>
-                            }
+                            @* Butonul de Like (din Master) *@
+                            <div class="d-flex align-items-center" style="cursor: pointer;" onclick="toggleLike(@item.Id)">
+                                <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1"></i>
+                                <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
+                            </div>
                         </div>
 
-                        @* --- MODIFICARE: AFIȘARE LISTĂ CATEGORII --- *@
+                        @* --- AFIȘARE LISTĂ CATEGORII (din Denis) --- *@
                         <div class="mb-2">
                             <i class="bi bi-folder2-open text-muted"></i>
                             @if (item.Categories != null && item.Categories.Any())
@@ -80,7 +92,7 @@
 
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted">
-                                <i class="bi bi-person"></i>
+                                <i class="bi bi-person"></i> 
                                 <a asp-controller="Categories" asp-action="Profile" asp-route-userId="@item.UserId" class="text-muted text-decoration-none">
                                     @(item.User?.UserName ?? "Unknown")
                                 </a>
@@ -101,6 +113,7 @@
                         </div>
                     </div>
 
+                    @* --- BUTOANE (Logica din Denis este mai completa pentru Save) --- *@
                     <div class="card-footer bg-white border-top-0">
                         <div class="d-flex justify-content-between">
                             <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
@@ -119,8 +132,8 @@
                                 }
                                 else
                                 {
-                                    @* Butonul Pinterest Style *@
-                                    <a asp-action="SaveToCollection" asp-route-id="@item.Id" class="btn btn-sm btn-danger text-white" title="Save To My Categories">
+                                    @* Butonul Save (Pinterest Style) *@
+                                    <a asp-action="SaveToCollection" asp-route-id="@item.Id" class="btn btn-sm btn-danger text-white" title="Save to my collection">
                                         <i class="bi bi-pin-angle-fill"></i> Save
                                     </a>
                                 }
@@ -132,3 +145,56 @@
         }
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        async function toggleLike(bookmarkId) {
+            try {
+                // Selectăm elementele
+                const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
+                const countSpan = document.getElementById(`like-count-${bookmarkId}`);
+
+                // Luam token-ul CSRF pentru securitate (ASP.NET Core il cere la POST)
+                const token = document.getElementsByName('__RequestVerificationToken')[0]?.value;
+
+                const response = await fetch('/Bookmarks/ToggleLike', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify(bookmarkId)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Actualizăm numărul
+                    countSpan.innerText = data.newCount;
+
+                    // Logica pentru iconiță
+                    if (data.isLiked) {
+                        // S-a dat LIKE
+                        heartIcon.classList.remove('bi-heart');
+                        heartIcon.classList.add('bi-heart-fill', 'text-danger');
+
+                        // Animatie CSS (optional, daca ai clasa animate-like definita in CSS)
+                        heartIcon.classList.add('animate-like');
+                        setTimeout(() => {
+                            heartIcon.classList.remove('animate-like');
+                        }, 400);
+
+                    } else {
+                        // S-a dat UNLIKE
+                        heartIcon.classList.add('bi-heart');
+                        heartIcon.classList.remove('bi-heart-fill', 'text-danger');
+                    }
+                } else {
+                    console.error("Eroare la server");
+                }
+            } catch (error) {
+                console.error("Eroare de rețea:", error);
+            }
+        }
+    </script>
+}

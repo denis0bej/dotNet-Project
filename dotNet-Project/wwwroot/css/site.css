@@ -29,3 +29,32 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+/* Adaug? asta la finalul fi?ierului site.css */
+
+@keyframes heart-bounce {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.4);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.animate-like {
+    animation: heart-bounce 0.4s ease-in-out;
+}
+
+.bi-heart, .bi-heart-fill {
+    transition: color 0.3s ease, transform 0.2s ease;
+    display: inline-block;
+}
+
+.pointer:hover i {
+    transform: scale(1.1);
+}
