@@ -38,12 +38,10 @@ namespace dotNet_Project.Models
         public virtual ApplicationUser? User { get; set; }
 
         // 2. Categoria
-        [Required(ErrorMessage = "Selectarea unei categorii este obligatorie")]
-        public int CategoryId { get; set; }
+        //public int CategoryId { get; set; }
+        //public virtual Category? Category { get; set; }
 
-        // NOTĂ: DE FACUT Category
-
-        public virtual Category? Category { get; set; }
+        public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 
         // --- Colecții ---
 

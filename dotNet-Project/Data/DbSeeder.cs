@@ -1,5 +1,6 @@
 ﻿using dotNet_Project.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore; // Necesar pentru interactiunea cu DB
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -71,35 +72,26 @@ namespace dotNet_Project.Data
             }
 
             // 4. Adăugăm Categoriile
-            var categories = new List<Category>
-            {
-                new Category { Name = "Valorant"},
-                new Category { Name = "Tree"},
-                new Category { Name = "Cats"}
-            };
+            // Nota: Trebuie sa le asignam si User-ul corect daca vrem sa apara in lista lor
 
-            foreach (var cat in categories)
+            // Preluam userii proaspat creati (sau existenti)
+            var currentAdmin = await userManager.FindByEmailAsync(adminEmail);
+            var currentUser = await userManager.FindByEmailAsync(userEmail);
+
+            if (!context.Categories.Any())
             {
-                if (!context.Categories.Any(c => c.Name == cat.Name))
-                {
-                    context.Categories.Add(cat);
-                }
+                context.Categories.AddRange(
+                    new Category { Name = "Valorant", UserId = currentAdmin.Id }, // Admin category
+                    new Category { Name = "Tree", UserId = currentUser.Id },      // User category
+                    new Category { Name = "Cats", UserId = currentUser.Id }       // User category
+                );
+                await context.SaveChangesAsync();
             }
 
-            // Salvăm categoriile pentru a le genera ID-urile
-            await context.SaveChangesAsync();
-
-
-            // 5. Adăugăm Bookmark-uri (SECȚIUNE NOUĂ)
-
-            // Verificăm dacă există deja bookmark-uri pentru a nu le dubla
+            // 5. Adăugăm Bookmark-uri (ACTUALIZAT PENTRU MANY-TO-MANY)
             if (!context.Bookmarks.Any())
             {
-                // Preluăm userii din DB pentru a avea ID-urile lor corecte
-                var adminInDb = await userManager.FindByEmailAsync(adminEmail);
-                var userInDb = await userManager.FindByEmailAsync(userEmail);
-
-                // Preluăm categoriile din DB pentru a avea ID-urile lor
+                // Preluăm categoriile din DB (trebuie sa fie obiecte track-uite de EF Core)
                 var catValorant = context.Categories.First(c => c.Name == "Valorant");
                 var catTree = context.Categories.First(c => c.Name == "Tree");
                 var catCats = context.Categories.First(c => c.Name == "Cats");
@@ -107,50 +99,58 @@ namespace dotNet_Project.Data
                 var bookmarks = new List<Bookmark>();
 
                 // Bookmark-uri pentru Admin
-                if (adminInDb != null)
+                if (currentAdmin != null)
                 {
                     bookmarks.Add(new Bookmark
                     {
                         Title = "Ghid complet Valorant",
                         Description = "Tactici avansate pentru jocul competitiv.",
-                        UserId = adminInDb.Id,
-                        CategoryId = catValorant.Id,
+                        UserId = currentAdmin.Id,
+                        // MODIFICARE AICI: Folosim lista Categories, nu CategoryId
+                        Categories = new List<Category> { catValorant },
                         CreatedAt = DateTime.Now,
-                        MediaUrl = "/images/valorant1.jpg"
+                        MediaUrl = "/images/valorant1.jpg",
+                        IsPublic = true
                     });
 
                     bookmarks.Add(new Bookmark
                     {
                         Title = "Lineups Sova",
                         Description = "Săgeți utile pentru harta Ascent.",
-                        UserId = adminInDb.Id,
-                        CategoryId = catValorant.Id,
+                        UserId = currentAdmin.Id,
+                        Categories = new List<Category> { catValorant },
                         CreatedAt = DateTime.Now.AddDays(-1),
-                        MediaUrl = "/images/valorant2.jpg"
+                        MediaUrl = "/images/valorant2.jpg",
+                        IsPublic = true
                     });
                 }
 
                 // Bookmark-uri pentru User-ul obișnuit
-                if (userInDb != null)
+                if (currentUser != null)
                 {
                     bookmarks.Add(new Bookmark
                     {
                         Title = "Poze amuzante cu pisici",
                         Description = "O listă cu cele mai haioase pisici de pe internet.",
-                        UserId = userInDb.Id,
-                        CategoryId = catCats.Id,
+                        UserId = currentUser.Id,
+                        Categories = new List<Category> { catCats },
                         CreatedAt = DateTime.Now.AddHours(-5),
-                        MediaUrl = "/images/cat1.jpg"
+                        MediaUrl = "/images/cat1.jpg",
+                        IsPublic = true
                     });
 
+                    // Exemplu de putere Many-to-Many: 
+                    // Un bookmark care e si in "Cats" si in "Tree" (Pisica in copac)
                     bookmarks.Add(new Bookmark
                     {
-                        Title = "Tipuri de arbori",
-                        Description = "O colecție de arbori din America de Nord.",
-                        UserId = userInDb.Id,
-                        CategoryId = catTree.Id,
-                        CreatedAt = DateTime.Now.AddDays(-2), // Creat acum 2 zile
-                        MediaUrl = "/images/tree1.jpg"
+                        Title = "Pisica blocata in copac",
+                        Description = "O colecție de salvări de pisici.",
+                        UserId = currentUser.Id,
+                        // AICI POTI PUNE MAI MULTE CATEGORII
+                        Categories = new List<Category> { catTree, catCats },
+                        CreatedAt = DateTime.Now.AddDays(-2),
+                        MediaUrl = "/images/tree1.jpg",
+                        IsPublic = true
                     });
                 }
 

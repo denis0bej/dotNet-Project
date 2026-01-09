@@ -1,0 +1,63 @@
+﻿@model dotNet_Project.Models.Bookmark
+
+@{
+    ViewData["Title"] = "Pin to Collection";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="bi bi-pin-angle-fill"></i> Save to Collection</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Select the folders where you want to save:
+                        <strong>@Model.Title</strong>
+                    </p>
+
+                    <form asp-action="SaveToCollection">
+                        <input type="hidden" asp-for="Id" />
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">My Categories</label>
+                            <div class="card p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
+                                @if (ViewBag.CategoryList != null)
+                                {
+                                    @foreach (var category in (IEnumerable<SelectListItem>)ViewBag.CategoryList)
+                                    {
+                                        <div class="form-check border-bottom py-2">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="selectedCategories"
+                                                   value="@category.Value"
+                                                   id="cat_@category.Value"
+                                                   @(category.Selected ? "checked" : "")>
+
+                                            <label class="form-check-label w-100" for="cat_@category.Value" style="cursor: pointer;">
+                                                <i class="bi bi-folder-fill text-warning me-2"></i> @category.Text
+                                            </label>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="text-danger">
+                                        You don't have any categories. <a asp-controller="Categories" asp-action="New">Create one first!</a>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                Save / Update
+                            </button>
+                            <a asp-action="Index" class="btn btn-link text-muted">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,12 +1,15 @@
 ﻿@model IEnumerable<dotNet_Project.Models.Bookmark>
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
 
 @{
     ViewData["Title"] = "Bookmarks";
+    var currentUserId = UserManager.GetUserId(User);
 }
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>My Bookmarks</h1>
+        <h1>All Bookmarks</h1>
         <a asp-action="New" class="btn btn-success">
             <i class="bi bi-plus-circle"></i> Add New
         </a>
@@ -22,11 +25,14 @@
     <div class="row">
         @foreach (var item in Model)
         {
+            bool isOwner = (item.UserId == currentUserId);
+
             <div class="col-md-4 mb-4">
                 <div class="card h-100 shadow-sm">
 
                     @* --- SECTIUNE IMAGINE --- *@
-                    @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
+                    @if (!string.IsNullOrEmpty(item.MediaUrl) &&
+                                    (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg") || item.MediaUrl.EndsWith(".webp")))
                     {
                         <img src="@item.MediaUrl" class="card-img-top" alt="@item.Title" style="height: 200px; object-fit: cover;">
                     }
@@ -40,25 +46,47 @@
                     <div class="card-body">
                         @* --- TITLU + BADGE PRIVAT --- *@
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title mb-0">@item.Title</h5>
+                            <h5 class="card-title mb-0 text-truncate" title="@item.Title">@item.Title</h5>
 
                             @if (!item.IsPublic)
                             {
-                                <span class="badge bg-danger" title="Acest bookmark este privat">
-                                    <i class="bi bi-lock-fill"></i> Privat
+                                <span class="badge bg-danger" title="Private Bookmark">
+                                    <i class="bi bi-lock-fill"></i>
                                 </span>
                             }
                         </div>
 
-                        <h6 class="card-subtitle mb-2 text-muted">
-                            <i class="bi bi-folder"></i> Category: @item.CategoryId
-                        </h6>
+                        @* --- MODIFICARE: AFIȘARE LISTĂ CATEGORII --- *@
+                        <div class="mb-2">
+                            <i class="bi bi-folder2-open text-muted"></i>
+                            @if (item.Categories != null && item.Categories.Any())
+                            {
+                                @foreach (var cat in item.Categories)
+                                {
+                                    <a asp-controller="Categories" asp-action="Show" asp-route-id="@cat.Id" class="text-decoration-none">
+                                        <span class="badge bg-light text-dark border me-1">@cat.Name</span>
+                                    </a>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Uncategorized</span>
+                            }
+                        </div>
 
                         <p class="card-text text-truncate">
                             @item.Description
                         </p>
 
-                        <small class="text-muted">Date added: @item.CreatedAt.ToString("dd/MM/yyyy")</small>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="bi bi-person"></i>
+                                <a asp-controller="Categories" asp-action="Profile" asp-route-userId="@item.UserId" class="text-muted text-decoration-none">
+                                    @(item.User?.UserName ?? "Unknown")
+                                </a>
+                            </small>
+                            <small class="text-muted">@item.CreatedAt.ToString("dd/MM/yyyy")</small>
+                        </div>
 
                         <div class="mt-2">
                             @if (item.Tags != null)
@@ -73,20 +101,30 @@
                         </div>
                     </div>
 
-                    <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
-                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
-                            View
-                        </a>
-
-                        <div>
-                            @* Am decomentat butonul de Edit ca să poți modifica vizibilitatea *@
-                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">
-                                Edit <i class="bi bi-pencil"></i>
+                    <div class="card-footer bg-white border-top-0">
+                        <div class="d-flex justify-content-between">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                                View
                             </a>
 
-                            <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">
-                                Delete <i class="bi bi-trash"></i>
-                            </a>
+                            <div>
+                                @if (isOwner || User.IsInRole("Admin"))
+                                {
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    @* Butonul Pinterest Style *@
+                                    <a asp-action="SaveToCollection" asp-route-id="@item.Id" class="btn btn-sm btn-danger text-white" title="Save To My Categories">
+                                        <i class="bi bi-pin-angle-fill"></i> Save
+                                    </a>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>

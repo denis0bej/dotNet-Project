@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="Views\Categories\Index1.cshtml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="wwwroot\images\cat1.jpg" />
     <None Include="wwwroot\images\cat2.jpg" />
     <None Include="wwwroot\images\cat3.jpg" />

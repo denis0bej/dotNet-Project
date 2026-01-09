@@ -23,10 +23,30 @@
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="CategoryId" class="form-label">Category</label>
-                            <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.Categories">
-                            </select>
-                            <span asp-validation-for="CategoryId" class="text-danger"></span>
+                            <label class="form-label fw-bold">Categories</label>
+                            <div class="card p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+                                @if (ViewBag.CategoryList != null)
+                                {
+                                    @foreach (var category in (IEnumerable<SelectListItem>)ViewBag.CategoryList)
+                                    {
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox"
+                                                   name="selectedCategories"
+                                                   value="@category.Value"
+                                                   id="cat_@category.Value"
+                                                   @(category.Selected ? "checked" : "") />
+
+                                            <label class="form-check-label" for="cat_@category.Value">
+                                                @category.Text
+                                            </label>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="text-muted">No categories found. Please create one first.</div>
+                                }
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -54,13 +74,13 @@
                                 Public
                             </label>
                             <div class="form-text">
-                                Uncheck to make it public.
+                                Check to make it public.
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-between mt-4">
                             <a asp-action="Index" class="btn btn-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Save</button>
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
                         </div>
                     </form>
                 </div>

@@ -22,8 +22,20 @@
                         <dt class="col-sm-4">Title:</dt>
                         <dd class="col-sm-8">@Model.Title</dd>
 
-                        <dt class="col-sm-4">Category:</dt>
-                        <dd class="col-sm-8">@Model.CategoryId</dd>
+                        <dt class="col-sm-4">Categories:</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.Categories.Any())
+                            {
+                                @foreach (var cat in Model.Categories)
+                                {
+                                    <span class="badge bg-secondary">@cat.Name</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">No categories</span>
+                            }
+                        </dd>
 
                         <dt class="col-sm-4">Date added:</dt>
                         <dd class="col-sm-8">@Model.CreatedAt.ToString("dd/MM/yyyy")</dd>

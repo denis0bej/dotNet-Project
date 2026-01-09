@@ -22,6 +22,21 @@ namespace dotNet_Project.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("BookmarkCategory", b =>
+                {
+                    b.Property<int>("BookmarksId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CategoriesId")
+                        .HasColumnType("int");
+
+                    b.HasKey("BookmarksId", "CategoriesId");
+
+                    b.HasIndex("CategoriesId");
+
+                    b.ToTable("BookmarkCategory");
+                });
+
             modelBuilder.Entity("BookmarkTag", b =>
                 {
                     b.Property<int>("BookmarksId")
@@ -259,9 +274,6 @@ namespace dotNet_Project.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CategoryId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -285,8 +297,6 @@ namespace dotNet_Project.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.HasIndex("UserId");
 
@@ -334,6 +344,21 @@ namespace dotNet_Project.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Tags");
+                });
+
+            modelBuilder.Entity("BookmarkCategory", b =>
+                {
+                    b.HasOne("dotNet_Project.Models.Bookmark", null)
+                        .WithMany()
+                        .HasForeignKey("BookmarksId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("dotNet_Project.Models.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoriesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("BookmarkTag", b =>
@@ -404,19 +429,11 @@ namespace dotNet_Project.Migrations
 
             modelBuilder.Entity("dotNet_Project.Models.Bookmark", b =>
                 {
-                    b.HasOne("dotNet_Project.Models.Category", "Category")
-                        .WithMany("Bookmarks")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("dotNet_Project.Models.ApplicationUser", "User")
                         .WithMany("Bookmarks")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Category");
 
                     b.Navigation("User");
                 });
@@ -435,11 +452,6 @@ namespace dotNet_Project.Migrations
                     b.Navigation("Bookmarks");
 
                     b.Navigation("Categories");
-                });
-
-            modelBuilder.Entity("dotNet_Project.Models.Category", b =>
-                {
-                    b.Navigation("Bookmarks");
                 });
 #pragma warning restore 612, 618
         }
