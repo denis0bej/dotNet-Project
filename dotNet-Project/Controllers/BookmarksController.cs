@@ -36,7 +36,7 @@ namespace dotNet_Project.Controllers
             var myBookmarksQuery = _context.Bookmarks
                         .Include(b => b.Tags)
                         .Include(b => b.Votes) // <--- AM ADAUGAT ASTA
-                        .Where(b => b.UserId == userId);
+                        .Where(b => b.UserId == currentUserId);
 
             var myBookmarks = await myBookmarksQuery.ToListAsync();
             return View(myBookmarks);
