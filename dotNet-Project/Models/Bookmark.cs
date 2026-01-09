@@ -21,36 +21,33 @@ namespace dotNet_Project.Models
         // Calea către imagine sau URL video
         public string? MediaUrl { get; set; }
 
+        [Display(Name = "Public")]
+        public bool IsPublic { get; set; } = true;
+
         public DateTime CreatedAt { get; set; }
-
-        // Câmp pentru popularitate (numărul total de like-uri)
-        public int LikeCount { get; set; } = 0;
-
-        // Relația cu voturile
-        public virtual ICollection<Vote> Votes { get; set; } = new List<Vote>();
 
         // --- Relații (Foreign Keys) ---
 
         // 1. Autorul Bookmark-ului
         [Required]
         public string UserId { get; set; }
-
         public virtual ApplicationUser? User { get; set; }
 
-        // 2. Categoria
-        [Required(ErrorMessage = "Selectarea unei categorii este obligatorie")]
-        public int CategoryId { get; set; }
+        // 2. Categoriile (Many-to-Many)
+        // ATENȚIE: Aici era problema. Am scos CategoryId și am pus lista Categories.
+        public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 
-        public virtual Category? Category { get; set; }
-
-        // --- Colecții ---
-
-        // IMPORTANT: Aceasta este linia care lipsește și cauzează eroarea.
-        // Trebuie să existe pentru ca EF Core și Controller-ul să funcționeze.
+        // 3. Tag-uri (Many-to-Many)
         public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();
 
-        // NOTĂ: Am scos TagString (inputul manual), dar am păstrat Tags (relația din DB).
-        // [NotMapped]
-        // public string? TagString { get; set; }
+        // 4. Voturi/Likes
+        public virtual ICollection<Vote> Votes { get; set; } = new List<Vote>();
+
+        // Proprietate calculată pentru a număra like-urile rapid
+        public int LikeCount { get; set; } = 0;
+
+        // Proprietate auxiliară pentru input-ul de tag-uri (opțional)
+        [NotMapped]
+        public string? TagString { get; set; }
     }
 }

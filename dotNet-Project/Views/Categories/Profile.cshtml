@@ -1,0 +1,71 @@
+﻿@model IEnumerable<dotNet_Project.Models.Category>
+
+@{
+    ViewData["Title"] = "Profile: " + ViewData["UserProfileName"];
+
+    // Preluam flag-urile din Controller
+    bool isOwner = ViewData["IsOwner"] as bool? ?? false;
+    bool isAdmin = ViewData["IsAdmin"] as bool? ?? false;
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>User Profile: <span class="text-primary">@ViewData["UserProfileName"]</span></h1>
+
+        @if (isOwner)
+        {
+            <a asp-action="New" class="btn btn-success">+ New Category</a>
+        }
+    </div>
+    <hr />
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">
+            This user has no visible categories.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var item in Model)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <td>
+                                <a asp-action="Show" asp-route-id="@item.Id" class="fw-bold text-decoration-none">
+                                    @Html.DisplayFor(modelItem => item.Name)
+                                </a>
+                            </td>
+                            @* <h5 class="card-title fw-bold">@item.Name</h5> *@
+
+                            @if (isOwner || isAdmin)
+                            {
+                                <div class="mb-2">
+                                    <span class="badge @(item.IsPublic ? "bg-success" : "bg-secondary")">
+                                        @(item.IsPublic ? "Public" : "Private")
+                                    </span>
+                                </div>
+                            }
+                        </div>
+
+                        @if (isOwner || isAdmin)
+                        {
+                            <div class="card-footer bg-transparent border-top-0 d-flex gap-2">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning w-50">Edit</a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger w-50">Delete</a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="mt-4">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            &larr; Back to All Categories
+        </a>
+    </div>
+</div>

@@ -27,7 +27,9 @@
         {
             <tr>
                 <td>
-                    @Html.DisplayFor(modelItem => item.Name)
+                    <a asp-action="Show" asp-route-id="@item.Id" class="fw-bold text-decoration-none">
+                        @Html.DisplayFor(modelItem => item.Name)
+                    </a>
                 </td>
                 <td>
                     @(item.IsPublic ? "Public" : "Private")

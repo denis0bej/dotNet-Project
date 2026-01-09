@@ -18,6 +18,6 @@ namespace dotNet_Project.Models
         public string? UserId { get; set; }
         public virtual ApplicationUser? User { get; set; }
 
-        public virtual ICollection<Bookmark> Bookmarks { get; set; } = [];
+        public virtual ICollection<Bookmark> Bookmarks { get; set; } = new List<Bookmark>();
     }
 }
