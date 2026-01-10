@@ -50,9 +50,9 @@ namespace dotNet_Project.Controllers
         // POST: Ștergere Comentariu
         [HttpPost]
         [Authorize]
-        public async Task<IActionResult> Delete(int id)
+        public IActionResult Delete(int id)
         {
-            var comment = await _context.Comments.FindAsync(id);
+            var comment = _context.Comments.Find(id);
 
             if (comment == null)
             {
@@ -61,15 +61,19 @@ namespace dotNet_Project.Controllers
 
             var currentUserId = _userManager.GetUserId(User);
 
-            // Doar proprietarul comentariului sau Adminul pot șterge
-            if (comment.UserId == currentUserId || User.IsInRole("Admin"))
+            // --- LOGICA DE ADMIN ---
+            // Poți șterge dacă ești proprietarul comentariului SAU dacă ești Admin
+            if (comment.UserId != currentUserId && !User.IsInRole("Admin"))
             {
-                _context.Comments.Remove(comment);
-                await _context.SaveChangesAsync();
-                return RedirectToAction("Show", "Bookmarks", new { id = comment.BookmarkId });
+                return Forbid();
             }
+            // -----------------------
 
-            return Forbid();
+            _context.Comments.Remove(comment);
+            _context.SaveChanges();
+
+            // Redirect înapoi la pagina bookmark-ului
+            return RedirectToAction("Show", "Bookmarks", new { id = comment.BookmarkId });
         }
 
         [HttpGet]

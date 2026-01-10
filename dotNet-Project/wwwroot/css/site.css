@@ -55,7 +55,6 @@ body {
     cursor: pointer;
 }
 
-
 /* =========================================
    ANIMATII SI INTERACTIUNI LIKE
    ========================================= */
@@ -137,17 +136,16 @@ body {
     animation: heartBreak 0.7s ease-out forwards;
 }
 
-
 /* =========================================
-   COMPONENTA: POST CARD / BOOKMARK (FULL CARD)
+   COMPONENTA: POST CARD / BOOKMARK (Varianta 1 - Design Avansat)
    ========================================= */
 
 .post-card {
     position: relative;
     border: none;
     border-radius: var(--bs-card-border-radius);
-    overflow: hidden; /* Taie orice iese din colțurile rotunjite */
-    height: 400px; /* Înălțime fixă obligatorie */
+    overflow: hidden;
+    height: 400px; /* Înălțime fixă pentru grilă uniformă */
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -158,14 +156,11 @@ body {
         cursor: pointer;
     }
 
-        /* Hover effect opțional pe titlu */
         .post-card:hover .card-title {
-            color: #0d6efd; /* Albastru Bootstrap la hover */
-            transition: color 0.2s;
+            color: #0d6efd;
         }
 
-/* 1. LINK INVIZIBIL (Fix pentru Clickabilitate) */
-/* Acoperă tot cardul și stă peste imagine, dar sub butoane */
+/* Link Invizibil (Acoperă tot cardul) */
 .card-main-link {
     position: absolute;
     top: 0;
@@ -177,7 +172,7 @@ body {
     opacity: 0;
 }
 
-/* 2. IMAGINEA DE FUNDAL */
+/* Imagine Fundal */
 .post-img-bg {
     position: absolute;
     top: 0;
@@ -185,10 +180,10 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    z-index: 0; /* Cel mai jos strat */
+    z-index: 0;
 }
 
-/* Placeholder fundal (când nu e imagine) */
+/* Placeholder Fundal */
 .post-placeholder-bg {
     position: absolute;
     top: 0;
@@ -202,22 +197,19 @@ body {
     z-index: 0;
 }
 
-/* 3. ZONA DE TEXT (JOS - CU GRADIENT) */
+/* Overlay Text (Gradient jos) */
 .post-content-overlay {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    z-index: 2; /* Peste link-ul invizibil */
-    /* ESENȚIAL: Permitem click-ului să treacă prin acest layer transparent 
-       pentru a ajunge la link-ul mare (.card-main-link) */
-    pointer-events: none;
-    /* Gradient ajustat pentru text puțin */
+    z-index: 2;
+    pointer-events: none; /* Permite click-ul prin el */
     background: linear-gradient(to top, #ffffff 15%, rgba(255,255,255,0.95) 45%, rgba(255,255,255,0) 100%);
     padding: 4rem 1rem 1rem 1rem;
 }
 
-/* 4. CATEGORIILE (SUS - DREAPTA) */
+/* Badges Sus */
 .post-badges-top {
     position: absolute;
     top: 15px;
@@ -226,19 +218,15 @@ body {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 5px;
-    /* Folosim clasa bring-to-front pentru z-index */
 }
 
-/* 5. UTILITARE SPECIALE CARD */
-
-/* Clasa pentru a ridica butoanele (Like, User) peste link-ul mare */
+/* Utilitare Z-Index */
 .bring-to-front {
     position: relative;
-    z-index: 10; /* Cel mai de sus */
-    pointer-events: auto; /* Reactivăm click-ul pentru butoane specifice */
+    z-index: 10;
+    pointer-events: auto;
 }
 
-/* Stil pentru Avatar Rotund */
 .user-avatar-small {
     width: 24px;
     height: 24px;
@@ -247,4 +235,75 @@ body {
     margin-right: 6px;
     border: 1px solid #fff;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* =========================================
+   STILURI SUPLIMENTARE (Varianta 2)
+   ========================================= */
+
+/* Imagini simple (pentru alte pagini) */
+.card-img-custom {
+    height: 250px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.card-img-placeholder {
+    height: 250px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.card-overlay-badges {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0.9;
+}
+
+/* =========================================
+   SEARCH BAR & OVERLAY (Varianta 2 - Esențial pentru Layout)
+   ========================================= */
+
+/* Input Căutare */
+input[name="searchString"] {
+    border: 2px solid #6c757d !important;
+    font-weight: 600;
+    color: #000;
+}
+
+.input-group .btn {
+    border-width: 2px !important;
+}
+
+input[name="searchString"]:focus {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+input[name="searchString"]::placeholder {
+    color: #6c757d;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+/* Overlay Mobil */
+#mobile-search-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.d-none {
+    display: none !important;
 }

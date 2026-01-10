@@ -37,8 +37,9 @@ namespace dotNet_Project.Controllers
             _aiService = aiService;
         }
 
-        // 1. LISTARE (Index)
-        public async Task<IActionResult> Index(int? pageNumber)
+        // 1. LISTARE (Index) - COMBINAT: Search/Sort (V2) + Admin Logic (V1)
+        [HttpGet]
+        public async Task<IActionResult> Index(string searchString, string sortOrder)
         {
             int pageSize = 15;
             int pageIndex = pageNumber ?? 1;
@@ -47,10 +48,10 @@ namespace dotNet_Project.Controllers
             var isAdmin = User.IsInRole("Admin");
 
             IQueryable<Bookmark> bookmarksQuery = _context.Bookmarks
-                                                          .Include(b => b.Tags)
-                                                          .Include(b => b.Categories)
-                                                          .Include(b => b.Votes)
-                                                          .Include(b => b.User);
+                                                            .Include(b => b.Tags)
+                                                            .Include(b => b.Categories)
+                                                            .Include(b => b.Votes)
+                                                            .Include(b => b.User);
 
             if (!isAdmin)
             {
@@ -88,7 +89,7 @@ namespace dotNet_Project.Controllers
             return View(paginatedResult);
         }
 
-        // 2. CREARE (New) - Formularul
+        // 2. CREARE (New) - GET
         [HttpGet]
         [Authorize(Roles = "Admin,User")]
         public IActionResult New()
@@ -105,7 +106,7 @@ namespace dotNet_Project.Controllers
             return View(new Bookmark());
         }
 
-        // POST: Bookmarks/New
+        // 2. CREARE (New) - POST
         [HttpPost]
         [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
@@ -198,7 +199,7 @@ namespace dotNet_Project.Controllers
             return View(bookmark);
         }
 
-        // 3. EDITARE (Edit) - Formularul
+        // 3. EDITARE (Edit) - GET
         [HttpGet]
         [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> Edit(int? id)
@@ -249,6 +250,7 @@ namespace dotNet_Project.Controllers
 
             if (bookmark.ImageUpload != null)
             {
+                // Stergem vechea imagine (Helper din Varianta 1)
                 DeleteLocalImage(existingBookmark.MediaUrl);
                 var storagePath = Path.Combine(_env.WebRootPath, "images", "bookmarks");
                 if (!Directory.Exists(storagePath)) Directory.CreateDirectory(storagePath);
@@ -335,7 +337,6 @@ namespace dotNet_Project.Controllers
         }
 
         [HttpPost, ActionName("Delete")]
-        [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
@@ -465,8 +466,13 @@ namespace dotNet_Project.Controllers
                 bookmark.LikeCount++;
                 isLiked = true;
             }
+            // Stergem si poza locala daca exista (folosim helperul)
+            DeleteLocalImage(bookmark.MediaUrl);
+
+            _context.Bookmarks.Remove(bookmark);
             await _context.SaveChangesAsync();
-            return Json(new { success = true, newCount = bookmark.LikeCount, isLiked = isLiked });
+
+            return Json(new { success = true, message = "Postarea a fost ștearsă cu succes!" });
         }
 
         // AJAX Suggest Metadata - AICI S-A MODIFICAT PENTRU TAG-URI
@@ -534,6 +540,7 @@ namespace dotNet_Project.Controllers
 
         private bool BookmarkExists(int id) => _context.Bookmarks.Any(e => e.Id == id);
 
+        // Helper din Varianta 1 (ADĂUGAT AICI PENTRU A FI FOLOSIT ÎN EDIT/DELETE)
         private void DeleteLocalImage(string relativePath)
         {
             if (string.IsNullOrEmpty(relativePath)) return;
