@@ -11,69 +11,60 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using dotNet_Project.Models;
+using dotNet_Project.Services;
 
 namespace dotNet_Project.Controllers
 {
     [Authorize]
     public class BookmarksController : Controller
     {
+        private readonly OpenAiService _aiService;
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<BookmarksController> _logger;
-
         private readonly IWebHostEnvironment _env;
 
         public BookmarksController(ApplicationDbContext context,
                                UserManager<ApplicationUser> userManager,
                                ILogger<BookmarksController> logger,
-                               IWebHostEnvironment env)
+                               IWebHostEnvironment env,
+                               OpenAiService aiService)
         {
             _context = context;
             _userManager = userManager;
             _logger = logger;
             _env = env;
+            _aiService = aiService;
         }
 
         // 1. LISTARE (Index)
         public async Task<IActionResult> Index(int? pageNumber)
         {
-            int pageSize = 15; // Maxim 15 bookmark-uri per pagină
+            int pageSize = 15;
             int pageIndex = pageNumber ?? 1;
 
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
 
-            // 1. Construim Query-ul de bază
             IQueryable<Bookmark> bookmarksQuery = _context.Bookmarks
                                                           .Include(b => b.Tags)
                                                           .Include(b => b.Categories)
                                                           .Include(b => b.Votes)
                                                           .Include(b => b.User);
 
-            if (isAdmin)
+            if (!isAdmin)
             {
-                // Adminul vede tot
-            }
-            else
-            {
-                // Userul vede doar ale lui
                 bookmarksQuery = bookmarksQuery.Where(b => b.UserId == currentUserId);
             }
 
-            // Sortarea implicită (cele mai noi primele)
             bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
 
-            // 2. PAGINAREA LA NIVEL DE BAZĂ DE DATE
-            // Numărăm totalul pentru a ști câte pagini avem
             var totalItems = await bookmarksQuery.CountAsync();
-
-            // Luăm doar "felia" necesară
             var bookmarksList = await bookmarksQuery
                                         .Skip((pageIndex - 1) * pageSize)
                                         .Take(pageSize)
                                         .ToListAsync();
 
-            // 3. MAPAREA CĂTRE VIEWMODEL
             var viewModelList = bookmarksList.Select(b =>
             {
                 var appUser = b.User as ApplicationUser;
@@ -83,18 +74,15 @@ namespace dotNet_Project.Controllers
                     Title = b.Title,
                     MediaUrl = b.MediaUrl,
                     LikeCount = b.Votes.Count,
-                    // Verificăm dacă eu (proprietarul) am dat like propriului post
                     IsLikedByCurrentUser = b.Votes.Any(v => v.UserId == currentUserId),
                     CategoryNames = b.Categories.Select(c => c.Name).ToList(),
                     IsPublic = b.IsPublic,
-                    // Date User
                     UserDisplayName = !string.IsNullOrEmpty(appUser?.FirstName) ? appUser.FirstName : (b.User?.UserName ?? "Unknown"),
                     UserProfilePicture = appUser?.ProfilePicture,
                     UserName = b.User?.UserName
                 };
             }).ToList();
 
-            // 4. Creăm lista paginată
             var paginatedResult = new PaginatedList<BookmarkCardViewModel>(viewModelList, totalItems, pageIndex, pageSize);
 
             return View(paginatedResult);
@@ -106,8 +94,6 @@ namespace dotNet_Project.Controllers
         public IActionResult New()
         {
             var currentUserId = _userManager.GetUserId(User);
-
-            // Selectam categoriile userului curent pentru a popula checkbox-urile
             var userCategories = _context.Categories.Where(c => c.UserId == currentUserId);
 
             ViewBag.CategoryList = userCategories.Select(c => new SelectListItem
@@ -123,7 +109,7 @@ namespace dotNet_Project.Controllers
         [HttpPost]
         [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> New(Bookmark bookmark, int[] selectedCategories)
+        public async Task<IActionResult> New(Bookmark bookmark, int[] selectedCategories, string? newCategoriesString)
         {
             var userId = _userManager.GetUserId(User);
             bookmark.UserId = userId;
@@ -132,28 +118,20 @@ namespace dotNet_Project.Controllers
             // --- LOGICA UPLOAD IMAGINE ---
             if (bookmark.ImageUpload != null)
             {
-                // Definim calea: wwwroot/images/bookmarks
                 var storagePath = Path.Combine(_env.WebRootPath, "images", "bookmarks");
-
-                // Cream folderul daca nu exista
                 if (!Directory.Exists(storagePath)) Directory.CreateDirectory(storagePath);
 
-                // Generam nume unic
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(bookmark.ImageUpload.FileName);
                 var filePath = Path.Combine(storagePath, fileName);
 
-                // Salvam fisierul fizic
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await bookmark.ImageUpload.CopyToAsync(stream);
                 }
-
-                // Setam proprietatea MediaUrl cu calea relativa
                 bookmark.MediaUrl = "/images/bookmarks/" + fileName;
             }
-            // ------------------------------
 
-            // Logica categorii (ramane la fel)
+            // 1. Categoriile EXISTENTE
             if (selectedCategories != null)
             {
                 foreach (var catId in selectedCategories)
@@ -163,11 +141,45 @@ namespace dotNet_Project.Controllers
                 }
             }
 
+            // 2. Categoriile NOI (AI sau manual)
+            if (!string.IsNullOrEmpty(newCategoriesString))
+            {
+                var newCatNames = newCategoriesString.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                                     .Select(s => s.Trim())
+                                                     .Distinct()
+                                                     .ToList();
+
+                foreach (var name in newCatNames)
+                {
+                    var existingCat = await _context.Categories
+                        .FirstOrDefaultAsync(c => c.UserId == userId && c.Name.ToLower() == name.ToLower());
+
+                    if (existingCat != null)
+                    {
+                        if (!bookmark.Categories.Contains(existingCat))
+                        {
+                            bookmark.Categories.Add(existingCat);
+                        }
+                    }
+                    else
+                    {
+                        var newCat = new Category
+                        {
+                            Name = name,
+                            UserId = userId,
+                            IsPublic = true
+                        };
+                        _context.Categories.Add(newCat);
+                        bookmark.Categories.Add(newCat);
+                    }
+                }
+            }
+
             ModelState.Remove("UserId");
             ModelState.Remove("Categories");
             ModelState.Remove("User");
             ModelState.Remove("Tags");
-            ModelState.Remove("ImageUpload"); // Scoatem din validare ca nu e in DB
+            ModelState.Remove("ImageUpload");
 
             if (ModelState.IsValid)
             {
@@ -176,7 +188,13 @@ namespace dotNet_Project.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // ... (partea de reincarcare ViewBag ramane la fel)
+            var userCategories = _context.Categories.Where(c => c.UserId == userId);
+            ViewBag.CategoryList = userCategories.Select(c => new SelectListItem
+            {
+                Value = c.Id.ToString(),
+                Text = c.Name
+            }).ToList();
+
             return View(bookmark);
         }
 
@@ -195,15 +213,8 @@ namespace dotNet_Project.Controllers
             if (bookmark == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
+            if (bookmark.UserId != currentUserId) return RedirectToAction(nameof(Index));
 
-            if (bookmark.UserId != currentUserId)
-            {
-                return RedirectToAction(nameof(Index));
-            }
-
-            // Am scos popularea TagString conform logicii de pe Master (AI tags)
-            
-            // --- CATEGORII ---
             var allUserCategories = _context.Categories.Where(c => c.UserId == currentUserId);
             var selectedIds = bookmark.Categories.Select(c => c.Id).ToList();
 
@@ -217,66 +228,78 @@ namespace dotNet_Project.Controllers
             return View(bookmark);
         }
 
-        // 3. EDITARE (Edit) - Salvarea modificărilor
+        // 3. EDITARE (Edit) - Salvare
         [HttpPost]
         [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Bookmark bookmark, int[] selectedCategories)
+        public async Task<IActionResult> Edit(int id, Bookmark bookmark, int[] selectedCategories, string? newCategoriesString)
         {
             if (id != bookmark.Id) return NotFound();
-
             var currentUserId = _userManager.GetUserId(User);
 
-            // Incarcam bookmark-ul existent
             var existingBookmark = await _context.Bookmarks
                                                  .Include(b => b.Categories)
                                                  .FirstOrDefaultAsync(b => b.Id == id);
 
-            if (existingBookmark == null || existingBookmark.UserId != currentUserId)
-            {
-                return Forbid();
-            }
+            if (existingBookmark == null || existingBookmark.UserId != currentUserId) return Forbid();
 
-            // Actualizam datele simple
             existingBookmark.Title = bookmark.Title;
             existingBookmark.Description = bookmark.Description;
             existingBookmark.IsPublic = bookmark.IsPublic;
 
-            // --- LOGICA UPLOAD IMAGINE (Editare) ---
             if (bookmark.ImageUpload != null)
             {
                 DeleteLocalImage(existingBookmark.MediaUrl);
-                // Daca userul incarca o poza noua, o procesam
                 var storagePath = Path.Combine(_env.WebRootPath, "images", "bookmarks");
                 if (!Directory.Exists(storagePath)) Directory.CreateDirectory(storagePath);
-
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(bookmark.ImageUpload.FileName);
                 var filePath = Path.Combine(storagePath, fileName);
-
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await bookmark.ImageUpload.CopyToAsync(stream);
                 }
-
-                // Suprascriem vechiul URL cu noua imagine
                 existingBookmark.MediaUrl = "/images/bookmarks/" + fileName;
             }
             else if (!string.IsNullOrEmpty(bookmark.MediaUrl))
             {
-                // Daca NU a incarcat poza noua, dar a schimbat textul URL-ului (ex: link YouTube), il actualizam
-                // Atentie: Aici decidem prioritatea. De obicei, daca da upload, ignoram URL-ul text.
                 existingBookmark.MediaUrl = bookmark.MediaUrl;
             }
-            // ---------------------------------------
 
-            // Actualizare categorii (codul existent ramane la fel)
             existingBookmark.Categories.Clear();
+
+            // A. Existente
             if (selectedCategories != null)
             {
                 foreach (var catId in selectedCategories)
                 {
                     var category = await _context.Categories.FindAsync(catId);
                     if (category != null) existingBookmark.Categories.Add(category);
+                }
+            }
+
+            // B. Noi
+            if (!string.IsNullOrEmpty(newCategoriesString))
+            {
+                var newCatNames = newCategoriesString.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                                     .Select(s => s.Trim())
+                                                     .Distinct();
+
+                foreach (var name in newCatNames)
+                {
+                    var existingCat = await _context.Categories
+                        .FirstOrDefaultAsync(c => c.UserId == currentUserId && c.Name.ToLower() == name.ToLower());
+
+                    if (existingCat != null)
+                    {
+                        if (!existingBookmark.Categories.Any(c => c.Id == existingCat.Id))
+                            existingBookmark.Categories.Add(existingCat);
+                    }
+                    else
+                    {
+                        var newCat = new Category { Name = name, UserId = currentUserId, IsPublic = true };
+                        _context.Categories.Add(newCat);
+                        existingBookmark.Categories.Add(newCat);
+                    }
                 }
             }
 
@@ -293,47 +316,33 @@ namespace dotNet_Project.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // 4. STERGERE (Delete) - GET
+        // 4. STERGERE
         [HttpGet]
         [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
-
-            // Folosim query-ul complet de la Denis
             var bookmark = await _context.Bookmarks
                                          .Include(b => b.User)
                                          .Include(b => b.Categories)
                                          .FirstOrDefaultAsync(m => m.Id == id);
 
             if (bookmark == null) return NotFound();
-
             var currentUserId = _userManager.GetUserId(User);
-
-            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin"))
-            {
-                return Forbid();
-            }
+            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin")) return Forbid();
 
             return View(bookmark);
         }
 
-        // 4. STERGERE (Delete) - POST
         [HttpPost, ActionName("Delete")]
         [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var bookmark = await _context.Bookmarks.FindAsync(id);
-
             if (bookmark == null) return NotFound();
-
             var currentUserId = _userManager.GetUserId(User);
-
-            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin"))
-            {
-                return Forbid();
-            }
+            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin")) return Forbid();
 
             DeleteLocalImage(bookmark.MediaUrl);
 
@@ -345,24 +354,19 @@ namespace dotNet_Project.Controllers
         }
 
         // 5. Show
-        // GET: Bookmarks/Show/5
         [AllowAnonymous]
         public async Task<IActionResult> Show(int? id)
         {
             if (id == null) return NotFound();
-
             var bookmark = await _context.Bookmarks
                                          .Include(b => b.Tags)
                                          .Include(b => b.User)
                                          .Include(b => b.Categories)
                                          .Include(b => b.Votes)
-                                         // Includem User-ul comentariului pentru a avea acces la ProfilePicture
                                          .Include(b => b.Comments).ThenInclude(c => c.User)
                                          .FirstOrDefaultAsync(m => m.Id == id);
 
             if (bookmark == null) return NotFound();
-
-            // --- LOGICA DE VIZIBILITATE (existenta) ---
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
 
@@ -381,39 +385,31 @@ namespace dotNet_Project.Controllers
                 var currentUser = await _userManager.FindByIdAsync(currentUserId);
                 ViewData["CurrentUserProfilePic"] = currentUser?.ProfilePicture;
             }
-            // ----------------------------
 
             return View(bookmark);
         }
 
-        // GET: Bookmarks/SaveToCollection/5
+        // Save To Collection
         [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> SaveToCollection(int? id)
         {
             if (id == null) return NotFound();
-
             var bookmark = await _context.Bookmarks.FindAsync(id);
             if (bookmark == null) return NotFound();
-
             var currentUserId = _userManager.GetUserId(User);
-
             var myCategories = _context.Categories
                                        .Where(c => c.UserId == currentUserId)
                                        .Include(c => c.Bookmarks);
-
             var categoriesList = await myCategories.ToListAsync();
-
             ViewBag.CategoryList = categoriesList.Select(c => new SelectListItem
             {
                 Value = c.Id.ToString(),
                 Text = c.Name,
                 Selected = c.Bookmarks.Any(b => b.Id == bookmark.Id)
             }).ToList();
-
             return View(bookmark);
         }
 
-        // POST: Bookmarks/SaveToCollection/5
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
@@ -421,32 +417,23 @@ namespace dotNet_Project.Controllers
         {
             var bookmark = await _context.Bookmarks.FindAsync(id);
             if (bookmark == null) return NotFound();
-
             var currentUserId = _userManager.GetUserId(User);
-
             if (selectedCategories != null)
             {
                 var myCategories = await _context.Categories
                                                  .Include(c => c.Bookmarks)
                                                  .Where(c => c.UserId == currentUserId)
                                                  .ToListAsync();
-
                 foreach (var category in myCategories)
                 {
                     if (selectedCategories.Contains(category.Id))
                     {
-                        if (!category.Bookmarks.Any(b => b.Id == id))
-                        {
-                            category.Bookmarks.Add(bookmark);
-                        }
+                        if (!category.Bookmarks.Any(b => b.Id == id)) category.Bookmarks.Add(bookmark);
                     }
                     else
                     {
                         var existingLink = category.Bookmarks.FirstOrDefault(b => b.Id == id);
-                        if (existingLink != null)
-                        {
-                            category.Bookmarks.Remove(existingLink);
-                        }
+                        if (existingLink != null) category.Bookmarks.Remove(existingLink);
                     }
                 }
                 await _context.SaveChangesAsync();
@@ -454,20 +441,17 @@ namespace dotNet_Project.Controllers
             return RedirectToAction("Index");
         }
 
-        // B. VOTING SYSTEM LOGIC (De pe branch Master)
+        // Toggle Like
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> ToggleLike([FromBody] int id)
         {
             var bookmark = await _context.Bookmarks.FindAsync(id);
             if (bookmark == null) return NotFound();
-
             var currentUserId = _userManager.GetUserId(User);
-            var existingVote = await _context.Votes
-                                             .FirstOrDefaultAsync(v => v.BookmarkId == id && v.UserId == currentUserId);
+            var existingVote = await _context.Votes.FirstOrDefaultAsync(v => v.BookmarkId == id && v.UserId == currentUserId);
 
             bool isLiked;
-
             if (existingVote != null)
             {
                 _context.Votes.Remove(existingVote);
@@ -481,18 +465,66 @@ namespace dotNet_Project.Controllers
                 bookmark.LikeCount++;
                 isLiked = true;
             }
-
             await _context.SaveChangesAsync();
             return Json(new { success = true, newCount = bookmark.LikeCount, isLiked = isLiked });
+        }
+
+        // AJAX Suggest Metadata - AICI S-A MODIFICAT PENTRU TAG-URI
+        [HttpPost]
+        public async Task<IActionResult> SuggestMetadata([FromBody] MetadataRequest request)
+        {
+            if (string.IsNullOrEmpty(request.Title) && string.IsNullOrEmpty(request.Description))
+            {
+                return BadRequest("Titlul sau descrierea sunt necesare.");
+            }
+
+            var currentUserId = _userManager.GetUserId(User);
+
+            var userCategories = await _context.Categories
+                                               .Where(c => c.UserId == currentUserId)
+                                               .Select(c => new { c.Id, c.Name })
+                                               .ToListAsync();
+
+            var existingNames = userCategories.Select(c => c.Name).ToList();
+
+            var suggestion = await _aiService.GenerateMetadata(request.Title ?? "", request.Description ?? "", existingNames);
+
+            if (suggestion == null) return StatusCode(500, "AI Service unavailable");
+
+            var foundCategoryIds = new List<int>();
+            var newSuggestedCategories = new List<string>();
+
+            if (suggestion.Categories != null)
+            {
+                foreach (var aiCatName in suggestion.Categories)
+                {
+                    var match = userCategories.FirstOrDefault(c => string.Equals(c.Name, aiCatName, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                        foundCategoryIds.Add(match.Id);
+                    else
+                        newSuggestedCategories.Add(aiCatName);
+                }
+            }
+
+            // JOIN la lista de tag-uri intr-un singur string (ex: "tag1, tag2")
+            string tagsCommaSeparated = "";
+            if (suggestion.Tags != null && suggestion.Tags.Any())
+            {
+                tagsCommaSeparated = string.Join(", ", suggestion.Tags);
+            }
+
+            return Json(new
+            {
+                tags = tagsCommaSeparated, // Trimitem string catre frontend
+                categoryIds = foundCategoryIds,
+                newCategories = newSuggestedCategories
+            });
         }
 
         // Helpers
         private async Task DeleteOrphanTags()
         {
-            var orphanTags = await _context.Tags
-                                   .Where(t => !t.Bookmarks.Any())
-                                   .ToListAsync();
-
+            var orphanTags = await _context.Tags.Where(t => !t.Bookmarks.Any()).ToListAsync();
             if (orphanTags.Any())
             {
                 _context.Tags.RemoveRange(orphanTags);
@@ -500,37 +532,22 @@ namespace dotNet_Project.Controllers
             }
         }
 
-        private bool BookmarkExists(int id)
-        {
-            return _context.Bookmarks.Any(e => e.Id == id);
-        }
+        private bool BookmarkExists(int id) => _context.Bookmarks.Any(e => e.Id == id);
 
         private void DeleteLocalImage(string relativePath)
         {
             if (string.IsNullOrEmpty(relativePath)) return;
-
-            // Verificăm dacă e fișier local (începe cu /images/) și nu e link extern (YouTube)
             if (relativePath.StartsWith("/images/"))
             {
-                // Construim calea absolută pe disc (ex: C:\Proiect\wwwroot\images\bookmarks\poza.jpg)
-                // TrimStart('/') scoate primul slash pentru a combina corect calea
                 var absolutePath = Path.Combine(_env.WebRootPath, relativePath.TrimStart('/'));
-
-                if (System.IO.File.Exists(absolutePath))
-                {
-                    try
-                    {
-                        System.IO.File.Delete(absolutePath);
-                    }
-                    catch (Exception ex)
-                    {
-                        // Putem loga eroarea, dar nu vrem să oprim execuția programului
-                        _logger.LogWarning("Nu s-a putut sterge fisierul: " + absolutePath);
-                    }
-                }
+                if (System.IO.File.Exists(absolutePath)) try { System.IO.File.Delete(absolutePath); } catch { }
             }
         }
 
-
+        public class MetadataRequest
+        {
+            public string Title { get; set; }
+            public string Description { get; set; }
+        }
     }
 }

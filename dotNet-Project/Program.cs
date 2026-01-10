@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using dotNet_Project.Data;
 using Microsoft.AspNetCore.Identity;
 using dotNet_Project.Models;
@@ -15,6 +15,8 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.R
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
 builder.Services.AddControllersWithViews();
+// Adaugă asta înainte de builder.Build();
+builder.Services.AddHttpClient<dotNet_Project.Services.OpenAiService>();
 
 var app = builder.Build();
 
