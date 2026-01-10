@@ -5,136 +5,168 @@
 @{
     ViewData["Title"] = "Home Feed";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-    var isAdmin = User.IsInRole("Admin");
 }
 
 @Html.AntiForgeryToken()
 
-<div class="text-center mb-5 mt-4">
-    <h1 class="display-4 fw-light">Discover New Ideas</h1>
-    <p class="lead text-muted">Cele mai interesante bookmark-uri din comunitate</p>
-</div>
+<div class="container mt-4 mb-5">
 
-<div class="d-flex justify-content-center mb-5">
-    <div class="btn-group shadow-sm" role="group">
-        <a asp-action="Index"
-           asp-route-sortOrder="Date"
-           asp-route-searchString="@ViewData["CurrentFilter"]"
-           class="btn @(ViewData["CurrentSort"] == "Date" || ViewData["CurrentSort"] == null ? "btn-dark" : "btn-outline-dark")">
-            <i class="bi bi-clock"></i> Most Recent
-        </a>
-
-        <a asp-action="Index"
-           asp-route-sortOrder="Popular"
-           asp-route-searchString="@ViewData["CurrentFilter"]"
-           class="btn @(ViewData["CurrentSort"] == "Popular" ? "btn-danger" : "btn-outline-danger")">
-            <i class="bi bi-fire"></i> Most Popular
-        </a>
+    <div class="text-center mb-5">
+        <h1 class="display-5 fw-bold text-dark">Discover New Ideas</h1>
+        <p class="lead text-muted">Cele mai interesante bookmark-uri din comunitate</p>
     </div>
-</div>
 
-@if (!Model.Any())
-{
-    <div class="text-center py-5">
-        <i class="bi bi-inbox display-1 text-muted"></i>
-        <h3 class="mt-3 text-muted">Nu am găsit postări publice momentan.</h3>
-        @if (ViewData["CurrentFilter"] != null)
-        {
-            <p>Încearcă să cauți altceva.</p>
-        }
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-8">
+            <form asp-controller="Home" asp-action="Index" method="get">
+                <div class="input-group mb-3 shadow-sm">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text"
+                           name="searchString"
+                           class="form-control border-start-0 border-end-0"
+                           placeholder="Caută idei, titluri sau tag-uri..."
+                           value="@ViewData["CurrentFilter"]">
+
+                    @if (ViewData["CurrentFilter"] != null)
+                    {
+                        <a asp-action="Index" class="btn btn-outline-secondary border-start-0 border-end-0" title="Curăță filtrele">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    }
+                    <button type="submit" class="btn btn-primary">Caută</button>
+                </div>
+
+                @if (ViewData["CurrentSort"] != null)
+                {
+                    <input type="hidden" name="sortOrder" value="@ViewData["CurrentSort"]" />
+                }
+            </form>
+        </div>
     </div>
-}
-else
-{
-    <div class="container">
+
+    <div class="d-flex justify-content-center mb-5">
+        <div class="btn-group shadow-sm" role="group">
+            <a asp-action="Index"
+               asp-route-sortOrder="Date"
+               asp-route-searchString="@ViewData["CurrentFilter"]"
+               class="btn btn-sm @(ViewData["CurrentSort"] == "Date" || ViewData["CurrentSort"] == null ? "btn-dark" : "btn-outline-dark")">
+                <i class="bi bi-clock"></i> Cele mai Recente
+            </a>
+
+            <a asp-action="Index"
+               asp-route-sortOrder="Popular"
+               asp-route-searchString="@ViewData["CurrentFilter"]"
+               class="btn btn-sm @(ViewData["CurrentSort"] == "Popular" ? "btn-danger" : "btn-outline-danger")">
+                <i class="bi bi-fire"></i> Cele mai Populare
+            </a>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-5">
+            <div class="mb-3">
+                <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
+            </div>
+            <h3 class="h4 text-muted">Nu am găsit postări publice.</h3>
+            @if (ViewData["CurrentFilter"] != null)
+            {
+                <p class="text-muted">Încearcă alți termeni de căutare.</p>
+                <a asp-action="Index" class="btn btn-outline-primary mt-2">Vezi tot</a>
+            }
+        </div>
+    }
+    else
+    {
         <div class="row">
             @foreach (var item in Model)
             {
-                var heartClass = item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart";
+                var heartClass = item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart text-dark";
 
-                <div class="col-md-6 col-lg-4 mb-4" id="card-post-@item.Id">
-                    <div class="card h-100 shadow-sm border-0 hover-effect">
+                <div class="col-md-4 mb-4" id="card-post-@item.Id">
+                    <div class="card post-card bg-white">
 
-                        <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="text-decoration-none">
-                            <div style="position: relative; overflow: hidden; height: 200px;">
-                                @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
-                                {
-                                    <img src="@item.MediaUrl" class="card-img-top h-100 w-100" style="object-fit: cover;" alt="@item.Title">
-                                }
-                                else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
-                                {
-                                    <div class="h-100 w-100 bg-black d-flex align-items-center justify-content-center">
-                                        <i class="bi bi-youtube text-danger display-4"></i>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="h-100 w-100 bg-light d-flex align-items-center justify-content-center">
-                                        <i class="bi bi-bookmark-star text-muted display-4"></i>
-                                    </div>
-                                }
+                        <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="card-main-link" aria-label="@item.Title"></a>
+
+                        @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg") || item.MediaUrl.EndsWith(".webp")))
+                        {
+                            <img src="@item.MediaUrl" class="post-img-bg" alt="@item.Title">
+                        }
+                        else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
+                        {
+                            <div class="post-placeholder-bg bg-light">
+                                <i class="bi bi-youtube text-danger fs-1"></i>
                             </div>
-                        </a>
-
-                        <div class="card-body">
-                            <div class="mb-2">
-                                @foreach (var catName in item.CategoryNames.Take(3))
-                                {
-                                    <span class="badge bg-light text-dark border me-1">@catName</span>
-                                }
+                        }
+                        else
+                        {
+                            <div class="post-placeholder-bg bg-light">
+                                <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
                             </div>
+                        }
 
-                            <h5 class="card-title fw-bold text-truncate">
-                                <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="text-dark text-decoration-none">
-                                    @item.Title
-                                </a>
-                            </h5>
-
-                            <div class="d-flex align-items-center mb-3">
-                                @if (!string.IsNullOrEmpty(item.UserProfilePicture))
-                                {
-                                    <img src="@item.UserProfilePicture" class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;" alt="User">
-                                }
-                                else
-                                {
-                                    <i class="bi bi-person-circle text-secondary me-2"></i>
-                                }
-                                <small class="text-muted text-truncate" style="max-width: 150px;">
-                                    @item.UserDisplayName
-                                </small>
-                            </div>
-
-                            <p class="card-text text-muted small text-truncate">
-                                @item.Description
-                            </p>
+                        <div class="post-badges-top bring-to-front">
+                            @foreach (var catName in item.CategoryNames.Take(3))
+                            {
+                                <span class="badge bg-white text-dark shadow-sm border">
+                                    @catName
+                                </span>
+                            }
                         </div>
 
-                        <div class="card-footer bg-white border-top-0 d-flex justify-content-between align-items-center pb-3">
-                            
-                            <div class="d-flex align-items-center">
-                                <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="btn btn-primary rounded-pill px-4 me-2">
-                                    Vezi
-                                </a>
+                        <div class="post-content-overlay d-flex flex-column justify-content-end">
 
-                                @if (isAdmin)
-                                {
-                                    <button onclick="deletePostAjax(@item.Id)" class="btn btn-outline-danger rounded-circle" title="Șterge ca Admin">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                }
-                            </div>
+                            <div class="d-flex justify-content-between align-items-end bring-to-front">
 
-                            <div class="d-flex align-items-center cursor-pointer" onclick="toggleLike(@item.Id)" style="cursor: pointer;">
-                                <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1 text-danger"></i>
-                                <span id="like-count-@item.Id" class="fw-bold text-dark">@item.LikeCount</span>
+                                <div class="d-flex flex-column pe-2" style="min-width: 0;">
+                                    <h5 class="card-title fw-bold text-truncate w-100 mb-1 text-dark">
+                                        @item.Title
+                                    </h5>
+
+                                    @if (item.Tags != null && item.Tags.Any())
+                                    {
+                                        <div class="mb-2">
+                                            @foreach (var tagName in item.Tags.Take(3))
+                                            {
+                                                <span class="text-muted small me-1">
+                                                    #@tagName
+                                                </span>
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="d-flex align-items-center mt-1">
+                                        @if (!string.IsNullOrEmpty(item.UserProfilePicture))
+                                        {
+                                            <img src="@item.UserProfilePicture" class="user-avatar-small me-2"
+                                                 alt="User" onerror="this.style.display='none'">
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-person-circle me-2 text-muted fs-6"></i>
+                                        }
+                                        <span class="text-muted small text-truncate fw-semibold">
+                                            @item.UserDisplayName
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                    <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@item.Id)">
+                                        <i id="heart-icon-@item.Id" class="bi @heartClass fs-3 me-1 like-icon"></i>
+                                        <span id="like-count-@item.Id" class="fw-bold text-dark">@item.LikeCount</span>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
-
                     </div>
                 </div>
             }
         </div>
-    </div>
+    }
 
     <div class="d-flex justify-content-center mt-4 mb-5">
         @{
@@ -162,22 +194,26 @@ else
             Next <i class="bi bi-arrow-right"></i>
         </a>
     </div>
-}
+</div>
 
 @section Scripts {
     <script>
-        // 1. LIKE FUNCTION
+        // Script-ul de Like identic cu cel din My Collection
         async function toggleLike(bookmarkId) {
             const tokenInput = document.getElementsByName('__RequestVerificationToken')[0];
+
+            // Verificare user logat
             if (!tokenInput) {
-                alert("Trebuie să fii autentificat pentru a da like!");
+                // Poți folosi un SweetAlert aici sau un simplu alert
+                alert("Trebuie să te autentifici pentru a aprecia postările!");
+                window.location.href = "/Identity/Account/Login"; // Redirect opțional
                 return;
             }
 
             try {
                 const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
                 const countSpan = document.getElementById(`like-count-${bookmarkId}`);
-                
+
                 const response = await fetch('/Bookmarks/ToggleLike', {
                     method: 'POST',
                     headers: {
@@ -192,57 +228,17 @@ else
                     countSpan.innerText = data.newCount;
 
                     if (data.isLiked) {
-                        heartIcon.classList.remove('bi-heart');
-                        heartIcon.classList.add('bi-heart-fill');
+                        heartIcon.classList.remove('bi-heart', 'text-dark');
+                        heartIcon.classList.add('bi-heart-fill', 'text-danger');
+                        heartIcon.classList.add('animate-like');
+                        setTimeout(() => { heartIcon.classList.remove('animate-like'); }, 400);
                     } else {
-                        heartIcon.classList.add('bi-heart');
-                        heartIcon.classList.remove('bi-heart-fill');
+                        heartIcon.classList.add('bi-heart', 'text-dark');
+                        heartIcon.classList.remove('bi-heart-fill', 'text-danger');
                     }
                 }
             } catch (error) {
                 console.error("Eroare like:", error);
-            }
-        }
-
-        // 2. ADMIN DELETE (AJAX)
-        async function deletePostAjax(bookmarkId) {
-            if (!confirm("Ești sigur că vrei să ștergi această postare definitiv (Admin)?")) {
-                return;
-            }
-
-            const tokenInput = document.getElementsByName('__RequestVerificationToken')[0];
-
-            try {
-                // Folosim FormData pentru a trimite ID-ul simplu
-                const formData = new FormData();
-                formData.append('id', bookmarkId);
-
-                const response = await fetch('/Bookmarks/DeleteAjax', {
-                    method: 'POST',
-                    headers: {
-                        'RequestVerificationToken': tokenInput ? tokenInput.value : ''
-                    },
-                    body: formData
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        alert(data.message);
-                        // Ștergem cardul din DOM fără reload
-                        const cardElement = document.getElementById(`card-post-${bookmarkId}`);
-                        if (cardElement) {
-                            cardElement.remove();
-                        }
-                    } else {
-                        alert("Eroare: " + data.message);
-                    }
-                } else {
-                    alert("A apărut o eroare la comunicarea cu serverul.");
-                }
-            } catch (error) {
-                console.error("Eroare delete:", error);
-                alert("Eroare de rețea.");
             }
         }
     </script>

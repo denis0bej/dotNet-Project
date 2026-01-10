@@ -10,7 +10,8 @@ namespace dotNet_Project.Models
         public int LikeCount { get; set; }
         public bool IsLikedByCurrentUser { get; set; }
         public List<string> CategoryNames { get; set; } = new List<string>();
-
+        public string? Description { get; set; }
+        public DateTime CreatedAt { get; set; }
         public List<string> Tags { get; set; } = new List<string>();
         public bool IsPublic { get; set; }
 

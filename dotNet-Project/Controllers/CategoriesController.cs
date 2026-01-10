@@ -4,7 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using dotNet_Project.Models;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace dotNet_Project.Controllers
 {
@@ -196,7 +197,6 @@ namespace dotNet_Project.Controllers
 
             var categories = await query.ToListAsync();
 
-            // (Optional) Gasim numele utilizatorului pentru a-l afișa în titlu
             var userProfile = await _userManager.FindByIdAsync(userId);
             ViewData["UserProfileName"] = userProfile?.UserName ?? "User";
             ViewData["IsOwner"] = (currentUserId == userId);
@@ -205,19 +205,16 @@ namespace dotNet_Project.Controllers
         }
 
         // GET: Categories/Show/5
-        // În CategoriesController.cs
-
-        // GET: Categories/Show/5
         public async Task<IActionResult> Show(int? id, int? pageNumber)
         {
             if (id == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
-            int pageSize = 15; // Maxim 15 pe pagină
+            int pageSize = 15;
             int pageIndex = pageNumber ?? 1;
 
-            // 1. Încărcăm doar DETALIILE Categoriei (fără bookmark-uri deocamdată)
+            // 1. Încărcăm doar DETALIILE Categoriei
             var category = await _context.Categories
                                          .Include(c => c.User)
                                          .FirstOrDefaultAsync(m => m.Id == id);
@@ -225,22 +222,21 @@ namespace dotNet_Project.Controllers
             if (category == null) return NotFound();
 
             // --- VERIFICĂRI SECURITATE ---
-            // Dacă categoria e privată și nu e a mea (și nu sunt admin) -> Nu am voie
             if (category.UserId != currentUserId && !category.IsPublic && !isAdmin)
             {
                 return Forbid();
             }
 
-            // 2. Construim Query-ul pentru Bookmark-uri din această categorie
+            // 2. Construim Query-ul pentru Bookmark-uri
             var bookmarksQuery = _context.Bookmarks
-                                         .Include(b => b.Categories) // Necesar pentru badge-uri
+                                         .Include(b => b.Categories)
                                          .Include(b => b.Votes)
                                          .Include(b => b.User)
-                                         .Where(b => b.Categories.Any(c => c.Id == id)) // Doar din categoria curentă
+                                         .Include(b => b.Tags) // <--- AM ADĂUGAT TAGS AICI
+                                         .Where(b => b.Categories.Any(c => c.Id == id))
                                          .AsQueryable();
 
-            // 3. Filtrare Conținut (Ce bookmark-uri văd în folder?)
-            // Dacă nu sunt proprietar/admin, văd doar bookmark-urile publice din acest folder
+            // 3. Filtrare Conținut
             if (category.UserId != currentUserId && !isAdmin)
             {
                 bookmarksQuery = bookmarksQuery.Where(b => b.IsPublic == true);
@@ -256,7 +252,7 @@ namespace dotNet_Project.Controllers
                                     .Take(pageSize)
                                     .ToListAsync();
 
-            // 5. Mapare la ViewModel (Carduri)
+            // 5. Mapare la ViewModel
             var bookmarkViewModels = pagedList.Select(b =>
             {
                 var appUser = b.User as ApplicationUser;
@@ -269,6 +265,7 @@ namespace dotNet_Project.Controllers
                     IsPublic = b.IsPublic,
                     IsLikedByCurrentUser = currentUserId != null && b.Votes.Any(v => v.UserId == currentUserId),
                     CategoryNames = b.Categories.Select(c => c.Name).ToList(),
+                    Tags = b.Tags.Select(t => t.Name).ToList(), // <--- AM MAPAT TAGS AICI
                     UserDisplayName = !string.IsNullOrEmpty(appUser?.FirstName) ? appUser.FirstName : (b.User?.UserName ?? "Unknown"),
                     UserProfilePicture = appUser?.ProfilePicture,
                     UserName = b.User?.UserName
@@ -292,6 +289,5 @@ namespace dotNet_Project.Controllers
 
             return View(model);
         }
-
     }
 }

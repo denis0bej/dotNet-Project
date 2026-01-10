@@ -1,38 +1,39 @@
-﻿using dotNet_Project.Data; // Necesare pentru DbContext
+﻿using dotNet_Project.Data;
 using dotNet_Project.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace dotNet_Project.Controllers
 {
     // Scoatem [Authorize] de la nivelul clasei pentru ca profilul sa poata fi public
-    // Vom pune [Authorize] doar pe Edit
     public class ProfilesController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _webHostEnvironment;
-        private readonly ApplicationDbContext _context; // Adaugam contextul DB
+        private readonly ApplicationDbContext _context;
 
         public ProfilesController(
             UserManager<ApplicationUser> userManager,
             IWebHostEnvironment webHostEnvironment,
-            ApplicationDbContext context) // Injectam in constructor
+            ApplicationDbContext context)
         {
             _userManager = userManager;
             _webHostEnvironment = webHostEnvironment;
             _context = context;
         }
 
-        // GET: /Profiles/Show/5 (sau id-ul utilizatorului)
-        // În ProfilesController.cs
-
+        // GET: /Profiles/Show/5
         public async Task<IActionResult> Show(string id, int? categoryPage, int? bookmarkPage)
         {
             var currentUserId = _userManager.GetUserId(User);
             string targetUserId = id ?? currentUserId;
-            int pageSize = 15; // Maxim 15 elemente per pagină
+            int pageSize = 15;
 
             if (targetUserId == null) return Redirect("/Identity/Account/Login");
 
@@ -41,9 +42,11 @@ namespace dotNet_Project.Controllers
 
             // --- 1. PREGĂTIRE QUERY-URI ---
             var categoriesQuery = _context.Categories.Where(c => c.UserId == targetUserId).AsQueryable();
+
             var bookmarksQuery = _context.Bookmarks
                                         .Include(b => b.Categories)
                                         .Include(b => b.Votes)
+                                        .Include(b => b.Tags) // <--- AM ADĂUGAT TAGS AICI
                                         .Where(b => b.UserId == targetUserId)
                                         .AsQueryable();
 
@@ -58,7 +61,7 @@ namespace dotNet_Project.Controllers
             }
 
             // Sortare implicită
-            categoriesQuery = categoriesQuery.OrderByDescending(c => c.Name); // Sau după nume
+            categoriesQuery = categoriesQuery.OrderByDescending(c => c.Name);
             bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
 
             // --- 2. PAGINARE CATEGORII ---
@@ -92,6 +95,7 @@ namespace dotNet_Project.Controllers
                 LikeCount = b.Votes.Count,
                 IsPublic = b.IsPublic,
                 CategoryNames = b.Categories.Select(c => c.Name).ToList(),
+                Tags = b.Tags.Select(t => t.Name).ToList(), // <--- AM MAPAT TAGS AICI
                 IsLikedByCurrentUser = currentUserId != null && b.Votes.Any(v => v.UserId == currentUserId),
                 UserDisplayName = $"{targetUser.FirstName} {targetUser.LastName}".Trim(),
                 UserProfilePicture = targetUser.ProfilePicture,
@@ -113,11 +117,11 @@ namespace dotNet_Project.Controllers
                 Description = targetUser.Description,
                 ProfilePicture = targetUser.ProfilePicture,
                 IsOwner = isOwner,
-                Categories = paginatedCategories, // Atribuim lista paginată
-                Bookmarks = paginatedBookmarks    // Atribuim lista paginată
+                Categories = paginatedCategories,
+                Bookmarks = paginatedBookmarks
             };
 
-            // Stocăm pagina curentă în ViewBag pentru a ști ce tab să activăm la reload (Opțional, dar util)
+            // Stocăm pagina curentă în ViewBag pentru tab activ
             ViewBag.ActiveTab = (bookmarkPage > 1 && categoryPage == null) ? "bookmarks" : "collections";
 
             return View(model);
@@ -127,7 +131,6 @@ namespace dotNet_Project.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit()
         {
-            // ... codul tau existent pentru Edit GET ...
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return NotFound();
 
@@ -146,7 +149,7 @@ namespace dotNet_Project.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ProfileDetailsModel model)
         {
-           
+
             if (!ModelState.IsValid) return View(model);
 
             var user = await _userManager.GetUserAsync(User);

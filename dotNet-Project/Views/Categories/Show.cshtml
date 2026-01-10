@@ -4,29 +4,68 @@
 
 @{
     ViewData["Title"] = "Category: " + Model.Name;
-    bool isOwner = (bool)ViewData["IsOwner"] as bool? ?? false;
+    bool isOwner = (bool)ViewData["IsOwner"];
 }
+
+@section Scripts {
+    <script>
+        async function toggleLike(bookmarkId) {
+            const tokenInput = document.getElementsByName('__RequestVerificationToken')[0];
+            if (!tokenInput) return;
+
+            try {
+                const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
+                const countSpan = document.getElementById(`like-count-${bookmarkId}`);
+
+                const response = await fetch('/Bookmarks/ToggleLike', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': tokenInput.value
+                    },
+                    body: JSON.stringify(bookmarkId)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    countSpan.innerText = data.newCount;
+
+                    if (data.isLiked) {
+                        heartIcon.classList.remove('bi-heart', 'text-dark');
+                        heartIcon.classList.add('bi-heart-fill', 'text-danger', 'animate-like');
+                        setTimeout(() => heartIcon.classList.remove('animate-like'), 400);
+                    } else {
+                        heartIcon.classList.add('bi-heart', 'text-dark');
+                        heartIcon.classList.remove('bi-heart-fill', 'text-danger');
+                    }
+                }
+            } catch (error) { console.error("Error:", error); }
+        }
+    </script>
+}
+
+@Html.AntiForgeryToken()
 
 <div class="container mt-4 mb-5">
 
     <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
         <div>
-            <h1 class="display-6 fw-bold mb-1">
+            <h1 class="display-6 fw-bold mb-1 text-dark">
                 <i class="bi bi-folder2-open text-warning me-2"></i> @Model.Name
             </h1>
             <p class="text-muted mb-0">
-                Collection created by
+                Collection by
                 <a asp-controller="Profiles" asp-action="Show" asp-route-id="@Model.UserId" class="fw-bold text-decoration-none text-dark">
                     @Model.UserDisplayName
                 </a>
 
                 @if (Model.IsPublic)
                 {
-                    <span class="badge bg-success bg-opacity-10 text-success border border-success ms-2">Public Collection</span>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success ms-2">Public</span>
                 }
                 else
                 {
-                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary ms-2">Private Collection</span>
+                    <span class="badge bg-dark text-white border border-secondary ms-2">Private</span>
                 }
             </p>
         </div>
@@ -34,7 +73,7 @@
         @if (isOwner)
         {
             <div class="d-flex gap-2">
-                <a asp-controller="Categories" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                <a asp-controller="Categories" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-3">
                     <i class="bi bi-gear"></i> Settings
                 </a>
             </div>
@@ -47,11 +86,13 @@
             <div class="mb-3">
                 <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
             </div>
-            <h4 class="text-muted">This collection is empty.</h4>
+            <h4 class="text-muted">Această colecție este goală.</h4>
             @if (isOwner)
             {
-                <p class="mb-4">Start adding bookmarks to this category!</p>
-                <a asp-controller="Bookmarks" asp-action="New" class="btn btn-primary rounded-pill">Add Bookmark</a>
+                <p class="mb-4 text-muted">Începe să adaugi idei aici!</p>
+                <a asp-controller="Bookmarks" asp-action="New" class="btn btn-primary rounded-pill px-4">
+                    Add Bookmark
+                </a>
             }
         </div>
     }
@@ -60,71 +101,83 @@
         <div class="row">
             @foreach (var item in Model.Bookmarks)
             {
-                var heartClass = item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart";
+                var heartClass = item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart text-dark";
 
-                <div class="col-md-4 mb-4">
-                    <div class="card post-card">
+                <div class="col-md-4 mb-4" id="card-post-@item.Id">
+                    <div class="card post-card bg-white">
 
                         <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="card-main-link" aria-label="@item.Title"></a>
 
-                        @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
+                        @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg") || item.MediaUrl.EndsWith(".webp")))
                         {
                             <img src="@item.MediaUrl" class="post-img-bg" alt="@item.Title">
                         }
                         else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
                         {
-                            <div class="post-placeholder-bg bg-black">
+                            <div class="post-placeholder-bg bg-light">
                                 <i class="bi bi-youtube text-danger fs-1"></i>
                             </div>
                         }
                         else
                         {
-                            <div class="post-placeholder-bg">
+                            <div class="post-placeholder-bg bg-light">
                                 <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
                             </div>
                         }
 
                         <div class="post-badges-top bring-to-front">
-                            @foreach (var catName in item.CategoryNames)
+                            @foreach (var catName in item.CategoryNames.Take(2))
                             {
-                                <span class="badge bg-light text-dark shadow-sm opacity-75">
+                                <span class="badge bg-white text-dark shadow-sm border">
                                     @catName
                                 </span>
                             }
                         </div>
 
-                        <div class="post-content-overlay">
+                        <div class="post-content-overlay d-flex flex-column justify-content-end">
 
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-end bring-to-front">
+                                <div class="d-flex flex-column pe-2" style="min-width: 0;">
 
-                                <div class="d-flex flex-column pe-3" style="min-width: 0;">
-
-                                    <h5 class="card-title fw-bold text-truncate w-100 mb-1">
+                                    <h5 class="card-title fw-bold text-truncate w-100 mb-1 text-dark">
                                         @item.Title
                                     </h5>
 
-                                    <div class="d-flex align-items-center bring-to-front position-relative">
+                                    @if (item.Tags != null && item.Tags.Any())
+                                    {
+                                        <div class="mb-2">
+                                            @foreach (var tagName in item.Tags.Take(3))
+                                            {
+                                                <span class="text-muted small me-1">
+                                                    #@tagName
+                                                </span>
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="d-flex align-items-center mt-1">
                                         @if (!string.IsNullOrEmpty(item.UserProfilePicture))
                                         {
-                                            <img src="@item.UserProfilePicture" class="user-avatar-small" alt="User">
+                                            <img src="@item.UserProfilePicture" class="user-avatar-small me-2" alt="User">
                                         }
                                         else
                                         {
-                                            <i class="bi bi-person-circle me-1 text-muted fs-5"></i>
+                                            <i class="bi bi-person-circle me-2 text-muted fs-6"></i>
                                         }
-
-                                        <span class="card-subtitle text-muted small mb-0 fw-semibold text-truncate">
+                                        <span class="text-muted small text-truncate fw-semibold">
                                             @item.UserDisplayName
                                         </span>
                                     </div>
                                 </div>
 
-                                <div class="d-flex align-items-center cursor-pointer like-container bring-to-front flex-shrink-0" onclick="toggleLike(@item.Id)">
-                                    <i id="heart-icon-@item.Id" class="bi @heartClass fs-3 me-1 like-icon"></i>
-                                    <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
+                                <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                    <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@item.Id)">
+                                        <i id="heart-icon-@item.Id" class="bi @heartClass fs-3 me-1 like-icon"></i>
+                                        <span id="like-count-@item.Id" class="fw-bold text-dark">@item.LikeCount</span>
+                                    </div>
                                 </div>
-
                             </div>
+
                         </div>
                     </div>
                 </div>
@@ -164,41 +217,3 @@
     </div>
 
 </div>
-
-@section Scripts {
-    <script>
-        async function toggleLike(bookmarkId) {
-             try {
-                 const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
-                 const countSpan = document.getElementById(`like-count-${bookmarkId}`);
-                 const token = document.getElementsByName('__RequestVerificationToken')[0]?.value;
-
-                 const response = await fetch('/Bookmarks/ToggleLike', {
-                     method: 'POST',
-                     headers: {
-                         'Content-Type': 'application/json',
-                         'RequestVerificationToken': token
-                     },
-                     body: JSON.stringify(bookmarkId)
-                 });
-
-                 if (response.ok) {
-                     const data = await response.json();
-                     countSpan.innerText = data.newCount;
-
-                     if (data.isLiked) {
-                         heartIcon.classList.remove('bi-heart');
-                         heartIcon.classList.add('bi-heart-fill', 'text-danger');
-                         heartIcon.classList.add('animate-like');
-                         setTimeout(() => { heartIcon.classList.remove('animate-like'); }, 400);
-                     } else {
-                         heartIcon.classList.add('bi-heart');
-                         heartIcon.classList.remove('bi-heart-fill', 'text-danger');
-                     }
-                 }
-             } catch (error) {
-                 console.error("Network error:", error);
-             }
-         }
-    </script>
-}

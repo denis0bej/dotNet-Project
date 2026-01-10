@@ -38,6 +38,7 @@ namespace dotNet_Project.Controllers
                                          .Include(b => b.User)
                                          .Include(b => b.Votes)
                                          .Include(b => b.Categories)
+                                         .Include(b => b.Tags)
                                          .Where(b => b.IsPublic);
 
             // 2. LOGICA DE CĂUTARE AVANSATĂ (Din Varianta 2)
@@ -47,7 +48,8 @@ namespace dotNet_Project.Controllers
                 bookmarksQuery = bookmarksQuery.Where(b =>
                     b.Title.Contains(searchString) ||
                     (b.Description != null && b.Description.Contains(searchString)) ||
-                    b.Categories.Any(c => c.Name.Contains(searchString)));
+                    b.Categories.Any(c => c.Name.Contains(searchString)) ||
+                    b.Tags.Any(t => t.Name.Contains(searchString)));
 
                 // B. PRIORITIZARE (Ranking: Titlu > Descriere)
                 bookmarksQuery = bookmarksQuery.OrderBy(b => b.Title.Contains(searchString) ? 0 : 1);
@@ -105,6 +107,7 @@ namespace dotNet_Project.Controllers
                     LikeCount = b.Votes.Count,
                     IsLikedByCurrentUser = currentUserId != null && b.Votes.Any(v => v.UserId == currentUserId),
                     CategoryNames = b.Categories.Select(c => c.Name).ToList(),
+                    Tags = b.Tags.Select(t => t.Name).ToList(),
                     IsPublic = b.IsPublic,
                     // Date User
                     UserDisplayName = !string.IsNullOrEmpty(appUser?.FirstName) ? appUser.FirstName : (b.User?.UserName ?? "Unknown"),
