@@ -12,6 +12,7 @@ namespace dotNet_Project.Models
         public List<string> CategoryNames { get; set; } = new List<string>();
 
         public List<string> Tags { get; set; } = new List<string>();
+        public bool IsPublic { get; set; }
 
         // Date securizate despre utilizator (Doar pentru afișare)
         public string? UserDisplayName { get; set; } // Va conține FirstName sau UserName

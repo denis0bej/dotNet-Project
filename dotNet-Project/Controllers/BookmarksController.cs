@@ -35,12 +35,15 @@ namespace dotNet_Project.Controllers
         }
 
         // 1. LISTARE (Index)
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? pageNumber)
         {
+            int pageSize = 15; // Maxim 15 bookmark-uri per pagină
+            int pageIndex = pageNumber ?? 1;
+
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
 
-            // 1. Construim Query-ul (ADĂUGĂM .Include(b => b.User))
+            // 1. Construim Query-ul de bază
             IQueryable<Bookmark> bookmarksQuery = _context.Bookmarks
                                                           .Include(b => b.Tags)
                                                           .Include(b => b.Categories)
@@ -49,7 +52,7 @@ namespace dotNet_Project.Controllers
 
             if (isAdmin)
             {
-                // Adminul vede tot (opțional)
+                // Adminul vede tot
             }
             else
             {
@@ -57,11 +60,21 @@ namespace dotNet_Project.Controllers
                 bookmarksQuery = bookmarksQuery.Where(b => b.UserId == currentUserId);
             }
 
-            // 2. Executăm query-ul
-            var bookmarksList = await bookmarksQuery.OrderByDescending(b => b.CreatedAt).ToListAsync();
+            // Sortarea implicită (cele mai noi primele)
+            bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
 
-            // 3. MAPAREA CĂTRE VIEWMODEL (La fel ca în HomeController)
-            var model = bookmarksList.Select(b =>
+            // 2. PAGINAREA LA NIVEL DE BAZĂ DE DATE
+            // Numărăm totalul pentru a ști câte pagini avem
+            var totalItems = await bookmarksQuery.CountAsync();
+
+            // Luăm doar "felia" necesară
+            var bookmarksList = await bookmarksQuery
+                                        .Skip((pageIndex - 1) * pageSize)
+                                        .Take(pageSize)
+                                        .ToListAsync();
+
+            // 3. MAPAREA CĂTRE VIEWMODEL
+            var viewModelList = bookmarksList.Select(b =>
             {
                 var appUser = b.User as ApplicationUser;
                 return new BookmarkCardViewModel
@@ -70,9 +83,10 @@ namespace dotNet_Project.Controllers
                     Title = b.Title,
                     MediaUrl = b.MediaUrl,
                     LikeCount = b.Votes.Count,
-                    IsLikedByCurrentUser = b.Votes.Any(v => v.UserId == currentUserId), // Deși e colecția mea, e bine să văd dacă mi-am dat like singur
+                    // Verificăm dacă eu (proprietarul) am dat like propriului post
+                    IsLikedByCurrentUser = b.Votes.Any(v => v.UserId == currentUserId),
                     CategoryNames = b.Categories.Select(c => c.Name).ToList(),
-
+                    IsPublic = b.IsPublic,
                     // Date User
                     UserDisplayName = !string.IsNullOrEmpty(appUser?.FirstName) ? appUser.FirstName : (b.User?.UserName ?? "Unknown"),
                     UserProfilePicture = appUser?.ProfilePicture,
@@ -80,7 +94,10 @@ namespace dotNet_Project.Controllers
                 };
             }).ToList();
 
-            return View(model);
+            // 4. Creăm lista paginată
+            var paginatedResult = new PaginatedList<BookmarkCardViewModel>(viewModelList, totalItems, pageIndex, pageSize);
+
+            return View(paginatedResult);
         }
 
         // 2. CREARE (New) - Formularul

@@ -1,5 +1,6 @@
 ﻿@using System.Security.Claims
-@model IEnumerable<dotNet_Project.Models.BookmarkCardViewModel>
+@using dotNet_Project.Models
+@model PaginatedList<dotNet_Project.Models.BookmarkCardViewModel>
 
 @{
     ViewData["Title"] = "Home Feed";
@@ -114,5 +115,30 @@
                 </div>
             </div>
         }
+    </div>
+
+    <div class="d-flex justify-content-center mt-4 mb-5">
+        @{
+            var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+            var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+        }
+
+        <a asp-action="Index"
+           asp-route-sortOrder="@ViewBag.CurrentSort"
+           asp-route-pageNumber="@(Model.PageIndex - 1)"
+           class="btn btn-outline-secondary me-2 @prevDisabled">
+            <i class="bi bi-arrow-left"></i> Pagina Anterioară
+        </a>
+
+        <span class="align-self-center mx-3 fw-bold text-muted">
+            Pagina @Model.PageIndex din @Model.TotalPages
+        </span>
+
+        <a asp-action="Index"
+           asp-route-sortOrder="@ViewBag.CurrentSort"
+           asp-route-pageNumber="@(Model.PageIndex + 1)"
+           class="btn btn-outline-secondary @nextDisabled">
+            Pagina Următoare <i class="bi bi-arrow-right"></i>
+        </a>
     </div>
 </div>

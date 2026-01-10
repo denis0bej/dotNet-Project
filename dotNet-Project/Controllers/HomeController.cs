@@ -21,26 +21,29 @@ namespace dotNet_Project.Controllers
             _userManager = userManager;
         }
 
-        public async Task<IActionResult> Index(string sortOrder)
+        // În HomeController.cs
+
+        public async Task<IActionResult> Index(string sortOrder, int? pageNumber)
         {
             ViewBag.CurrentSort = sortOrder;
+            int pageSize = 15; // Maxim 15 bookmark-uri per pagină
+            int pageIndex = pageNumber ?? 1; // Pagina curentă (default 1)
 
-            // Obținem ID-ul utilizatorului curent (poate fi null dacă nu e logat)
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // 1. Construim interogarea (Luăm datele brute din DB)
+            // 1. Construim interogarea (Query-ul de bază)
             var bookmarksQuery = _context.Bookmarks
                                          .Include(b => b.Categories)
                                          .Include(b => b.User)
                                          .Include(b => b.Votes)
-                                         .Where(b => b.IsPublic) // Doar cele publice
+                                         .Where(b => b.IsPublic)
                                          .AsQueryable();
 
             // 2. Aplicăm Sortarea
             switch (sortOrder)
             {
                 case "Popular":
-                    bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.LikeCount); // Asumând că ai proprietatea LikeCount calculată sau o iei din Votes.Count
+                    bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.Votes.Count);
                     break;
                 case "Recent":
                 default:
@@ -48,40 +51,38 @@ namespace dotNet_Project.Controllers
                     break;
             }
 
-            // Executăm interogarea la baza de date
-            var bookmarksList = await bookmarksQuery.ToListAsync();
+            // 3. PAGINAREA LA NIVEL DE BAZĂ DE DATE
+            // Mai întâi numărăm totalul pentru a calcula numărul de pagini
+            var totalItems = await bookmarksQuery.CountAsync();
 
-            // 3. MAPAREA SECURE (Transformăm în ViewModel)
-            // Aici transformăm obiectele complexe de DB în obiecte simple pentru View
-            var viewModelList = bookmarksList.Select(b =>
+            // Luăm doar elementele pentru pagina curentă
+            var dbList = await bookmarksQuery
+                                .Skip((pageIndex - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+
+            // 4. Maparea datelor (Transformăm doar cele 15 elemente în ViewModel)
+            var viewModelList = dbList.Select(b =>
             {
-                // Facem cast sigur la ApplicationUser
                 var appUser = b.User as ApplicationUser;
-
                 return new BookmarkCardViewModel
                 {
                     Id = b.Id,
                     Title = b.Title,
                     MediaUrl = b.MediaUrl,
-                    LikeCount = b.Votes.Count, // Calculăm like-urile
-
-                    // Verificăm dacă userul curent a dat like
+                    LikeCount = b.Votes.Count,
                     IsLikedByCurrentUser = currentUserId != null && b.Votes.Any(v => v.UserId == currentUserId),
-
                     CategoryNames = b.Categories.Select(c => c.Name).ToList(),
-
-                    // LOGICA DE AFIȘARE USER (Securizată)
-                    // Dacă are prenume, îl folosim, altfel folosim username-ul
                     UserDisplayName = !string.IsNullOrEmpty(appUser?.FirstName) ? appUser.FirstName : (b.User?.UserName ?? "Unknown"),
-
-                    // Poză de profil
                     UserProfilePicture = appUser?.ProfilePicture,
                     UserName = b.User?.UserName
                 };
             }).ToList();
 
-            // Trimitem lista de ViewModels la View
-            return View(viewModelList);
+            // 5. Creăm obiectul paginat final
+            var paginatedResult = new PaginatedList<BookmarkCardViewModel>(viewModelList, totalItems, pageIndex, pageSize);
+
+            return View(paginatedResult);
         }
 
         public IActionResult Privacy()

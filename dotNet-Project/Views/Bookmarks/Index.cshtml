@@ -1,5 +1,5 @@
-﻿@using System.Security.Claims
-@model IEnumerable<dotNet_Project.Models.BookmarkCardViewModel>
+﻿@using dotNet_Project.Models
+@model PaginatedList<dotNet_Project.Models.BookmarkCardViewModel>
 
 @{
     ViewData["Title"] = "My Personal Collection";
@@ -10,12 +10,12 @@
 <div class="container mt-4 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="display-6 fw-bold mb-0">Your Bookmarks</h1>
-            <p class="text-muted small">These are ALL your bookmarks!</p>
+            <h1 class="display-6 fw-bold mb-0">My Collection</h1>
+            <p class="text-muted small">Manage all your bookmarks.</p>
         </div>
 
         <a asp-action="New" class="btn btn-primary rounded-pill px-4 shadow-sm">
-            <i class="bi bi-plus-lg me-1"></i> Add Bookmark
+            <i class="bi bi-plus-lg me-1"></i> Add New
         </a>
     </div>
 
@@ -25,9 +25,9 @@
             <div class="mb-3">
                 <i class="bi bi-folder2-open display-1 text-muted opacity-25"></i>
             </div>
-            <h4 class="text-muted">Much empty.. </h4>
-            <p class="mb-4">Add a new <b>Bookmark</b> to fill this void!</p>
-            <a asp-action="New" class="btn btn-outline-primary">Add Bookmark</a>
+            <h4 class="text-muted">You don't have any bookmarks yet.</h4>
+            <p class="mb-4">Start by adding your first idea!</p>
+            <a asp-action="New" class="btn btn-outline-primary">Create Bookmark</a>
         </div>
     }
 
@@ -42,10 +42,10 @@
                     <a asp-action="Show" asp-route-id="@item.Id" class="card-main-link" aria-label="@item.Title"></a>
 
                     <div class="position-absolute top-0 start-0 p-3 bring-to-front d-flex gap-2">
-                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-light btn-sm rounded-circle shadow-sm" title="Editează" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-light btn-sm rounded-circle shadow-sm" title="Edit" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-pencil-fill text-dark small"></i>
                         </a>
-                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-light btn-sm rounded-circle shadow-sm" title="Șterge" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-light btn-sm rounded-circle shadow-sm" title="Delete" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-trash-fill text-danger small"></i>
                         </a>
                     </div>
@@ -84,18 +84,19 @@
                                     @item.Title
                                 </h5>
 
-                                <div class="d-flex align-items-center bring-to-front position-relative">
-                                    @if (!string.IsNullOrEmpty(item.UserProfilePicture))
+                                <div class="bring-to-front">
+                                    @if (item.IsPublic)
                                     {
-                                        <img src="@item.UserProfilePicture" class="user-avatar-small" alt="User">
+                                        <span class="badge bg-success bg-opacity-75 text-white shadow-sm d-inline-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                            <i class="bi bi-globe-americas"></i> Public
+                                        </span>
                                     }
                                     else
                                     {
-                                        <i class="bi bi-person-circle me-1 text-muted fs-5"></i>
+                                        <span class="badge bg-secondary bg-opacity-75 text-white shadow-sm d-inline-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                            <i class="bi bi-lock-fill"></i> Private
+                                        </span>
                                     }
-                                    <span class="card-subtitle text-muted small mb-0 fw-semibold text-truncate">
-                                        @item.UserDisplayName
-                                    </span>
                                 </div>
                             </div>
 
@@ -110,6 +111,30 @@
             </div>
         }
     </div>
+
+    <div class="d-flex justify-content-center mt-4 mb-5">
+        @{
+            var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+            var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+        }
+
+        <a asp-action="Index"
+           asp-route-pageNumber="@(Model.PageIndex - 1)"
+           class="btn btn-outline-secondary me-2 @prevDisabled">
+            <i class="bi bi-arrow-left"></i> Previous Page
+        </a>
+
+        <span class="align-self-center mx-3 fw-bold text-muted">
+            Page @Model.PageIndex of @Model.TotalPages
+        </span>
+
+        <a asp-action="Index"
+           asp-route-pageNumber="@(Model.PageIndex + 1)"
+           class="btn btn-outline-secondary @nextDisabled">
+            Next Page <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+
 </div>
 
 @section Scripts {
@@ -118,7 +143,6 @@
              try {
                  const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
                  const countSpan = document.getElementById(`like-count-${bookmarkId}`);
-                 // Token-ul este necesar pentru securitate (ValidateAntiForgeryToken)
                  const token = document.getElementsByName('__RequestVerificationToken')[0]?.value;
 
                  const response = await fetch('/Bookmarks/ToggleLike', {
