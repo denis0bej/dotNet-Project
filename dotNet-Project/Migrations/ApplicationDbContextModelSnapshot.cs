@@ -331,6 +331,38 @@ namespace dotNet_Project.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("dotNet_Project.Models.Comment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookmarkId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookmarkId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Comments");
+                });
+
             modelBuilder.Entity("dotNet_Project.Models.Tag", b =>
                 {
                     b.Property<int>("Id")
@@ -474,6 +506,25 @@ namespace dotNet_Project.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("dotNet_Project.Models.Comment", b =>
+                {
+                    b.HasOne("dotNet_Project.Models.Bookmark", "Bookmark")
+                        .WithMany("Comments")
+                        .HasForeignKey("BookmarkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("dotNet_Project.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Bookmark");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("dotNet_Project.Models.Vote", b =>
                 {
                     b.HasOne("dotNet_Project.Models.Bookmark", "Bookmark")
@@ -502,6 +553,8 @@ namespace dotNet_Project.Migrations
 
             modelBuilder.Entity("dotNet_Project.Models.Bookmark", b =>
                 {
+                    b.Navigation("Comments");
+
                     b.Navigation("Votes");
                 });
 #pragma warning restore 612, 618

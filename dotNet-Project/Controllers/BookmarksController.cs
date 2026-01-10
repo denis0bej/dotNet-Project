@@ -278,16 +278,17 @@ namespace dotNet_Project.Controllers
 
         // 5. DETALII
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
 
-            // COMBINARE: Luam User+Categorii (Denis) si Votes (Master)
             var bookmark = await _context.Bookmarks
                                          .Include(b => b.Tags)
                                          .Include(b => b.User)
                                          .Include(b => b.Categories)
                                          .Include(b => b.Votes)
+                                         .Include(b => b.Comments).ThenInclude(c => c.User)
                                          .FirstOrDefaultAsync(m => m.Id == id);
 
             if (bookmark == null) return NotFound();
@@ -301,7 +302,7 @@ namespace dotNet_Project.Controllers
 
         // A. PINTEREST LOGIC (De pe branch Denis)
         // GET: Bookmarks/SaveToCollection/5
-        [Authorize]
+        [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> SaveToCollection(int? id)
         {
             if (id == null) return NotFound();

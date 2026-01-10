@@ -15,6 +15,7 @@ namespace dotNet_Project.Data
         public DbSet<Category> Categories { get; set; }
         public DbSet<Tag> Tags { get; set; }
         public DbSet<Vote> Votes { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
         // --- ADAUGĂ ACEASTĂ METODĂ ---
         protected override void OnModelCreating(ModelBuilder builder)
@@ -29,6 +30,13 @@ namespace dotNet_Project.Data
                 .WithMany()
                 .HasForeignKey(v => v.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            // Configurare pentru a evita eroarea "Multiple Cascade Paths"
+            builder.Entity<Comment>()
+                .HasOne(c => c.User)
+                .WithMany() // Nu avem neapărat o listă de Comments în User, e ok așa
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict); // AICI este fix-ul: schimbăm din Cascade în Restrict
         }
     }
 }

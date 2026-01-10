@@ -49,5 +49,7 @@ namespace dotNet_Project.Models
         // Proprietate auxiliară pentru input-ul de tag-uri (opțional)
         [NotMapped]
         public string? TagString { get; set; }
+        // 5. Comentarii
+        public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
     }
 }
