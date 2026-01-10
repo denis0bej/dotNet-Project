@@ -34,40 +34,68 @@ namespace dotNet_Project.Controllers
             _env = env;
         }
 
-        // 1. LISTARE (Index) - DOAR COLECȚIA MEA (Private + Publice)
+        // 1. LISTARE (Index) - CU SORTARE ȘI CĂUTARE
         [HttpGet]
-        public async Task<IActionResult> Index(string searchString)
+        public async Task<IActionResult> Index(string searchString, string sortOrder)
         {
             var currentUserId = _userManager.GetUserId(User);
 
             ViewData["CurrentFilter"] = searchString;
+            ViewData["CurrentSort"] = sortOrder;
 
-            // 1. Query de bază: Luăm DOAR bookmark-urile utilizatorului curent
+            // 1. Query de bază
             IQueryable<Bookmark> bookmarksQuery = _context.Bookmarks
                                                             .Include(b => b.Tags)
                                                             .Include(b => b.Categories)
                                                             .Include(b => b.Votes)
                                                             .Include(b => b.User)
-                                                            .Where(b => b.UserId == currentUserId); // <--- SCHIMBAREA CHEIE (Doar ale mele)
+                                                            .Where(b => b.UserId == currentUserId);
 
-            // 2. LOGICA DE CAUTARE (În colecția proprie)
+            // 2. LOGICA DE CĂUTARE AVANSATĂ
             if (!string.IsNullOrEmpty(searchString))
             {
+                // A. FILTRARE: Luăm tot ce se potrivește (Titlu OR Descriere OR Categorie)
                 bookmarksQuery = bookmarksQuery.Where(b =>
                     b.Title.Contains(searchString) ||
                     (b.Description != null && b.Description.Contains(searchString)) ||
                     b.Categories.Any(c => c.Name.Contains(searchString)));
+
+                // B. PRIORITIZARE (Ranking)
+                // Folosim o expresie condițională în OrderBy:
+                // Dacă Titlul conține textul, primește nota 0 (Prioritate Maximă).
+                // Altfel, primește nota 1 (Prioritate Mică - e doar în descriere/categorie).
+                bookmarksQuery = bookmarksQuery.OrderBy(b => b.Title.Contains(searchString) ? 0 : 1);
+
+                // C. SORTARE SECUNDARĂ (În funcție de preferința utilizatorului)
+                // Folosim "ThenBy" pentru a nu strica prioritatea stabilită mai sus
+                switch (sortOrder)
+                {
+                    case "Popular":
+                        bookmarksQuery = ((IOrderedQueryable<Bookmark>)bookmarksQuery).ThenByDescending(b => b.LikeCount);
+                        break;
+                    case "Date":
+                    default:
+                        bookmarksQuery = ((IOrderedQueryable<Bookmark>)bookmarksQuery).ThenByDescending(b => b.CreatedAt);
+                        break;
+                }
             }
             else
             {
-                // MODIFICARE AICI: Stergem "|| b.IsPublic == true"
-                // Acum userul vede DOAR bookmark-urile create de el
-                bookmarksQuery = bookmarksQuery.Where(b => b.UserId == currentUserId);
+                // 3. SORTARE STANDARD (Fără căutare activă)
+                // Aici folosim OrderBy simplu pentru că nu avem prioritate de titlu
+                switch (sortOrder)
+                {
+                    case "Popular":
+                        bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.LikeCount);
+                        break;
+                    case "Date":
+                    default:
+                        bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
+                        break;
+                }
             }
 
-            // 3. Ordonare: Cele mai noi sus
-            var bookmarks = await bookmarksQuery.OrderByDescending(b => b.CreatedAt).ToListAsync();
-
+            var bookmarks = await bookmarksQuery.ToListAsync();
             return View(bookmarks);
         }
 
@@ -258,18 +286,36 @@ namespace dotNet_Project.Controllers
             return View(bookmark);
         }
 
+        // POST: Bookmarks/Delete/5
         [HttpPost, ActionName("Delete")]
-        [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var bookmark = await _context.Bookmarks.FindAsync(id);
-            if (bookmark == null) return NotFound();
+
+            if (bookmark == null)
+            {
+                return NotFound();
+            }
+
             var currentUserId = _userManager.GetUserId(User);
-            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin")) return Forbid();
+
+            // --- LOGICA DE SECURITATE PENTRU ADMIN ---
+            // Permitem ștergerea dacă:
+            // 1. Utilizatorul curent este proprietarul (UserId == currentUserId)
+            // SAU
+            // 2. Utilizatorul curent are rolul de "Admin" (!User.IsInRole("Admin"))
+            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin"))
+            {
+                // Dacă nu e nici proprietar, nici Admin, îi interzicem accesul
+                return Forbid();
+            }
+            // ----------------------------------------
+
             _context.Bookmarks.Remove(bookmark);
             await _context.SaveChangesAsync();
-            await DeleteOrphanTags();
+
+            // Ne întoarcem la pagina de unde am venit (de obicei Index)
             return RedirectToAction(nameof(Index));
         }
 
@@ -397,6 +443,26 @@ namespace dotNet_Project.Controllers
         private bool BookmarkExists(int id)
         {
             return _context.Bookmarks.Any(e => e.Id == id);
+        }
+
+        // POST: Bookmarks/DeleteAjax/5
+        // Metodă specială pentru ștergerea din Feed fără reîncărcarea paginii
+        [HttpPost]
+        [Authorize(Roles = "Admin")] // Doar Adminul poate folosi asta din Feed
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAjax(int id)
+        {
+            var bookmark = await _context.Bookmarks.FindAsync(id);
+
+            if (bookmark == null)
+            {
+                return Json(new { success = false, message = "Postarea nu a fost găsită." });
+            }
+
+            _context.Bookmarks.Remove(bookmark);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Postarea a fost ștearsă cu succes!" });
         }
     }
 }

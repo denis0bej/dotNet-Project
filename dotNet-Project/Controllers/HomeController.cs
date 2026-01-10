@@ -22,45 +22,64 @@ namespace dotNet_Project.Controllers
         }
 
         // Metoda Index primește un parametru opțional "sortOrder"
-        // Parametrul 'searchString' vine din input-ul formularului pe care il vom face
-        public async Task<IActionResult> Index(string sortOrder, string searchString)
+        // Parametrul 'searchString' vine din input-ul formularului
+        public async Task<IActionResult> Index(string searchString, string sortOrder)
         {
-            // Salvăm parametrii în ViewData pentru a-i păstra în View (ex: să rămână textul în căsuța de search)
-            ViewData["CurrentSort"] = sortOrder;
+            // Salvăm parametrii pentru View (ca să știm ce buton să colorăm)
             ViewData["CurrentFilter"] = searchString;
+            ViewData["CurrentSort"] = sortOrder;
 
-            // 1. Construim interogarea de bază
-            var bookmarksQuery = _context.Bookmarks
-                                         .Include(b => b.Categories)
+            // 1. Query de bază: Luăm DOAR postările PUBLICE
+            IQueryable<Bookmark> bookmarksQuery = _context.Bookmarks
                                          .Include(b => b.User)
                                          .Include(b => b.Votes)
-                                         .Where(b => b.IsPublic) // Doar cele publice
-                                         .AsQueryable();
+                                         .Include(b => b.Categories)
+                                         .Where(b => b.IsPublic); // <--- Doar cele publice
 
-            // 2. Aplicăm FILTRAREA (Căutarea)
+            // 2. LOGICA DE CĂUTARE AVANSATĂ (Weighted Search)
             if (!string.IsNullOrEmpty(searchString))
             {
-                // Căutăm parțial (Contains) în Titlu, Descriere SAU în Numele Categoriilor
+                // A. FILTRARE: Luăm tot ce se potrivește (Titlu OR Descriere OR Categorie)
                 bookmarksQuery = bookmarksQuery.Where(b =>
                     b.Title.Contains(searchString) ||
-                    b.Description.Contains(searchString) ||
+                    (b.Description != null && b.Description.Contains(searchString)) ||
                     b.Categories.Any(c => c.Name.Contains(searchString)));
-            }
 
-            // 3. Aplicăm SORTAREA
-            switch (sortOrder)
+                // B. PRIORITIZARE (Ranking)
+                // Dacă Titlul conține textul, primește prioritate 0 (Maximă). Altfel 1.
+                bookmarksQuery = bookmarksQuery.OrderBy(b => b.Title.Contains(searchString) ? 0 : 1);
+
+                // C. SORTARE SECUNDARĂ (În funcție de preferința utilizatorului)
+                // Folosim "ThenBy" pentru a nu strica prioritatea titlului
+                switch (sortOrder)
+                {
+                    case "Popular":
+                        bookmarksQuery = ((IOrderedQueryable<Bookmark>)bookmarksQuery).ThenByDescending(b => b.LikeCount);
+                        break;
+                    case "Date":
+                    default:
+                        bookmarksQuery = ((IOrderedQueryable<Bookmark>)bookmarksQuery).ThenByDescending(b => b.CreatedAt);
+                        break;
+                }
+            }
+            else
             {
-                case "Popular":
-                    bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.LikeCount);
-                    break;
-                case "Recent":
-                default:
-                    bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
-                    break;
+                // 3. SORTARE STANDARD (Când nu căutăm nimic)
+                // Aici folosim OrderBy simplu
+                switch (sortOrder)
+                {
+                    case "Popular":
+                        bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.LikeCount);
+                        break;
+                    case "Date":
+                    default:
+                        bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
+                        break;
+                }
             }
 
-            var bookmarks = await bookmarksQuery.ToListAsync();
-            return View(bookmarks);
+            // 4. Returnare listă
+            return View(await bookmarksQuery.ToListAsync());
         }
 
         public IActionResult Privacy()
