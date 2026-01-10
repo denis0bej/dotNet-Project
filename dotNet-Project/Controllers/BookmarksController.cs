@@ -40,27 +40,47 @@ namespace dotNet_Project.Controllers
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
 
-            // Includem relatiile necesare
+            // 1. Construim Query-ul (ADĂUGĂM .Include(b => b.User))
             IQueryable<Bookmark> bookmarksQuery = _context.Bookmarks
                                                           .Include(b => b.Tags)
                                                           .Include(b => b.Categories)
-                                                          .Include(b => b.Votes);
+                                                          .Include(b => b.Votes)
+                                                          .Include(b => b.User);
 
             if (isAdmin)
             {
-                // Adminul vede tot pentru moderare (optional: poti comenta if-ul daca vrei ca si adminul sa vada doar ale lui)
+                // Adminul vede tot (opțional)
             }
             else
             {
-                // MODIFICARE AICI: Stergem "|| b.IsPublic == true"
-                // Acum userul vede DOAR bookmark-urile create de el
+                // Userul vede doar ale lui
                 bookmarksQuery = bookmarksQuery.Where(b => b.UserId == currentUserId);
             }
 
-            // Ordonare descrescatoare
-            var bookmarks = await bookmarksQuery.OrderByDescending(b => b.CreatedAt).ToListAsync();
+            // 2. Executăm query-ul
+            var bookmarksList = await bookmarksQuery.OrderByDescending(b => b.CreatedAt).ToListAsync();
 
-            return View(bookmarks);
+            // 3. MAPAREA CĂTRE VIEWMODEL (La fel ca în HomeController)
+            var model = bookmarksList.Select(b =>
+            {
+                var appUser = b.User as ApplicationUser;
+                return new BookmarkCardViewModel
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    MediaUrl = b.MediaUrl,
+                    LikeCount = b.Votes.Count,
+                    IsLikedByCurrentUser = b.Votes.Any(v => v.UserId == currentUserId), // Deși e colecția mea, e bine să văd dacă mi-am dat like singur
+                    CategoryNames = b.Categories.Select(c => c.Name).ToList(),
+
+                    // Date User
+                    UserDisplayName = !string.IsNullOrEmpty(appUser?.FirstName) ? appUser.FirstName : (b.User?.UserName ?? "Unknown"),
+                    UserProfilePicture = appUser?.ProfilePicture,
+                    UserName = b.User?.UserName
+                };
+            }).ToList();
+
+            return View(model);
         }
 
         // 2. CREARE (New) - Formularul

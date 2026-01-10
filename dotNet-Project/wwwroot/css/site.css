@@ -30,29 +30,7 @@ body {
     text-align: start;
 }
 
-/* --- STILURI GENERALE PROIECT --- */
-
-/* Imagini carduri */
-.card-img-custom {
-    height: 250px;
-    object-fit: cover;
-    width: 100%;
-}
-
-.card-img-placeholder {
-    height: 250px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* Badge-uri */
-.card-overlay-badges {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    opacity: 0.9;
-}
+/* --- UTILITARE GENERALE --- */
 
 .text-pre-wrap {
     white-space: pre-wrap;
@@ -73,37 +51,31 @@ body {
     border-radius: 0.25rem;
 }
 
-/* Cursor pointer generic */
 .cursor-pointer {
     cursor: pointer;
 }
 
 
 /* =========================================
-   ANIMATII SI INTERACTIUNI LIKE (NOU)
+   ANIMATII SI INTERACTIUNI LIKE
    ========================================= */
 
-/* 1. Containerul butonului de like */
 .like-container {
     transition: transform 0.1s ease-in-out;
-    display: inline-flex; /* Asigură alinierea corectă */
+    display: inline-flex;
     align-items: center;
 }
 
-    /* Când dai hover pe container, iconița crește fluent */
     .like-container:hover .like-icon {
-        transform: scale(1.2); /* Crește cu 20% */
-        color: #dc3545; /* Devine roșie la hover (opțional) */
+        transform: scale(1.2);
+        color: #dc3545;
     }
 
-/* 2. Iconița în sine - tranzitie lina */
 .like-icon {
-    /* Tranziție complexă pentru mișcări naturale */
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease-in-out;
     display: inline-block;
 }
 
-/* --- ANIMATIA DE LIKE (Bătaie de inimă) --- */
 @keyframes heartBeat {
     0% {
         transform: scale(1);
@@ -130,7 +102,6 @@ body {
     animation: heartBeat 0.6s ease-in-out;
 }
 
-/* --- ANIMATIA DE UNLIKE (Inimă Frântă) --- */
 @keyframes heartBreak {
     0% {
         transform: scale(1);
@@ -158,11 +129,122 @@ body {
 
     100% {
         transform: scale(0.8) translateY(5px);
-        opacity: 0; /* Dispare complet */
+        opacity: 0;
     }
 }
 
 .animate-break {
-    /* forwards păstrează starea finală (invizibil) până scoatem clasa cu JS */
     animation: heartBreak 0.7s ease-out forwards;
+}
+
+
+/* =========================================
+   COMPONENTA: POST CARD / BOOKMARK (FULL CARD)
+   ========================================= */
+
+.post-card {
+    position: relative;
+    border: none;
+    border-radius: var(--bs-card-border-radius);
+    overflow: hidden; /* Taie orice iese din colțurile rotunjite */
+    height: 400px; /* Înălțime fixă obligatorie */
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .post-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,0.175) !important;
+        cursor: pointer;
+    }
+
+        /* Hover effect opțional pe titlu */
+        .post-card:hover .card-title {
+            color: #0d6efd; /* Albastru Bootstrap la hover */
+            transition: color 0.2s;
+        }
+
+/* 1. LINK INVIZIBIL (Fix pentru Clickabilitate) */
+/* Acoperă tot cardul și stă peste imagine, dar sub butoane */
+.card-main-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    text-decoration: none;
+    opacity: 0;
+}
+
+/* 2. IMAGINEA DE FUNDAL */
+.post-img-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0; /* Cel mai jos strat */
+}
+
+/* Placeholder fundal (când nu e imagine) */
+.post-placeholder-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 0;
+}
+
+/* 3. ZONA DE TEXT (JOS - CU GRADIENT) */
+.post-content-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2; /* Peste link-ul invizibil */
+    /* ESENȚIAL: Permitem click-ului să treacă prin acest layer transparent 
+       pentru a ajunge la link-ul mare (.card-main-link) */
+    pointer-events: none;
+    /* Gradient ajustat pentru text puțin */
+    background: linear-gradient(to top, #ffffff 15%, rgba(255,255,255,0.95) 45%, rgba(255,255,255,0) 100%);
+    padding: 4rem 1rem 1rem 1rem;
+}
+
+/* 4. CATEGORIILE (SUS - DREAPTA) */
+.post-badges-top {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 5px;
+    /* Folosim clasa bring-to-front pentru z-index */
+}
+
+/* 5. UTILITARE SPECIALE CARD */
+
+/* Clasa pentru a ridica butoanele (Like, User) peste link-ul mare */
+.bring-to-front {
+    position: relative;
+    z-index: 10; /* Cel mai de sus */
+    pointer-events: auto; /* Reactivăm click-ul pentru butoane specifice */
+}
+
+/* Stil pentru Avatar Rotund */
+.user-avatar-small {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 6px;
+    border: 1px solid #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }

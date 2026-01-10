@@ -1,9 +1,8 @@
 ﻿@using System.Security.Claims
-@model IEnumerable<dotNet_Project.Models.Bookmark>
+@model IEnumerable<dotNet_Project.Models.BookmarkCardViewModel>
 
 @{
     ViewData["Title"] = "Home Feed";
-    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
 @Html.AntiForgeryToken()
@@ -27,85 +26,90 @@
     @if (!Model.Any())
     {
         <div class="alert alert-warning text-center">
-            Nu există bookmark-uri publice momentan. Fii tu primul care postează într-o categorie publică!
+            Nu există bookmark-uri publice momentan.
+            Fii tu primul care postează într-o categorie publică!
         </div>
     }
 
     <div class="row">
         @foreach (var item in Model)
         {
-            var isLikedByMe = item.Votes.Any(v => v.UserId == currentUserId);
-            var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
+            var heartClass = item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart";
 
             <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm border-0">
+                <div class="card post-card">
 
-                    <div style="position: relative;">
-                        @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
-                        {
-                            <img src="@item.MediaUrl" class="card-img-top rounded-top card-img-custom" alt="@item.Title">
-                        }
-                        else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
-                        {
-                            <div class="card-img-top bg-black card-img-placeholder">
-                                <i class="bi bi-youtube text-danger fs-1"></i>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="card-img-top bg-light card-img-placeholder">
-                                <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
-                            </div>
-                        }
+                    <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="card-main-link" aria-label="@item.Title"></a>
 
-                        <div class="card-overlay-badges">
-                            @if (item.Categories != null)
-                            {
-                                @foreach (var cat in item.Categories)
-                                {
-                                    <span class="badge bg-light text-dark shadow-sm me-1">
-                                        @cat.Name
-                                    </span>
-                                }
-                            }
+                    @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
+                    {
+                        <img src="@item.MediaUrl" class="post-img-bg" alt="@item.Title">
+                    }
+                    else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
+                    {
+                        <div class="post-placeholder-bg bg-black">
+                            <i class="bi bi-youtube text-danger fs-1"></i>
                         </div>
+                    }
+                    else
+                    {
+                        <div class="post-placeholder-bg">
+                            <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
+                        </div>
+                    }
+
+                    <div class="post-badges-top bring-to-front">
+                        @foreach (var catName in item.CategoryNames)
+                        {
+                            <span class="badge bg-light text-dark shadow-sm opacity-75">
+                                @catName
+                            </span>
+                        }
                     </div>
 
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title fw-bold text-truncate w-75">@item.Title</h5>
+                    <div class="post-content-overlay">
 
-                            @if (currentUserId != null)
+                        <div class="d-flex justify-content-between align-items-center">
+
+                            <div class="d-flex flex-column pe-3" style="min-width: 0;">
+
+                                <h5 class="card-title fw-bold text-truncate w-100 mb-1">
+                                    @item.Title
+                                </h5>
+
+                                <div class="d-flex align-items-center bring-to-front position-relative">
+                                    @if (!string.IsNullOrEmpty(item.UserProfilePicture))
+                                    {
+                                        <img src="@item.UserProfilePicture" class="user-avatar-small" alt="User">
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle me-1 text-muted fs-5"></i>
+                                    }
+
+                                    <span class="card-subtitle text-muted small mb-0 fw-semibold text-truncate">
+                                        @item.UserDisplayName
+                                    </span>
+                                </div>
+                            </div>
+
+                            @if (User.Identity.IsAuthenticated)
                             {
-                                <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@item.Id)">
-
-                                    <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1 like-icon"></i>
-
-                                    <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
+                                <div class="d-flex align-items-center cursor-pointer like-container bring-to-front flex-shrink-0" onclick="toggleLike(@item.Id)">
+                                    <i id="heart-icon-@item.Id" class="bi @heartClass fs-3 me-1 like-icon"></i> <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
                                 </div>
                             }
                             else
                             {
-                                <div class="d-flex align-items-center">
+                                <div class="d-flex align-items-center bring-to-front flex-shrink-0">
                                     <a asp-area="Identity" asp-page="/Account/Login" class="text-decoration-none text-dark">
-                                        <i class="bi bi-heart fs-4 me-1"></i>
+                                        <i class="bi bi-heart fs-3 me-1"></i>
                                         <span class="fw-bold">@item.LikeCount</span>
                                     </a>
                                 </div>
                             }
+
                         </div>
-
-                        <p class="card-subtitle text-muted mb-2 small">
-                            <i class="bi bi-person-circle"></i> @(item.User?.UserName ?? "Unknown")
-                        </p>
-
-                        <p class="card-text text-truncate">@item.Description</p>
-                    </div>
-
-                    <div class="card-footer bg-white border-top-0">
-                        <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="btn btn-primary w-100 rounded-pill">
-                            Vezi Pin-ul
-                        </a>
                     </div>
                 </div>
             </div>
