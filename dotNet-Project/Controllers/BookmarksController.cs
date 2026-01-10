@@ -35,30 +35,31 @@ namespace dotNet_Project.Controllers
         }
 
         // 1. LISTARE (Index)
-        [HttpGet]
         public async Task<IActionResult> Index()
         {
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
 
-            // COMBINARE: Includem si Categoriile (Denis) si Voturile (Master)
+            // Includem relatiile necesare
             IQueryable<Bookmark> bookmarksQuery = _context.Bookmarks
                                                           .Include(b => b.Tags)
                                                           .Include(b => b.Categories)
-                                                          .Include(b => b.Votes); 
+                                                          .Include(b => b.Votes);
 
             if (isAdmin)
             {
-                // Adminul vede TOT
+                // Adminul vede tot pentru moderare (optional: poti comenta if-ul daca vrei ca si adminul sa vada doar ale lui)
             }
             else
             {
-                // Userul vede: Ale sale SAU Cele Publice
-                bookmarksQuery = bookmarksQuery.Where(b => b.UserId == currentUserId || b.IsPublic == true);
+                // MODIFICARE AICI: Stergem "|| b.IsPublic == true"
+                // Acum userul vede DOAR bookmark-urile create de el
+                bookmarksQuery = bookmarksQuery.Where(b => b.UserId == currentUserId);
             }
 
-            // Ordonam descrescator dupa data crearii (cel mai nou sus)
+            // Ordonare descrescatoare
             var bookmarks = await bookmarksQuery.OrderByDescending(b => b.CreatedAt).ToListAsync();
+
             return View(bookmarks);
         }
 
@@ -303,8 +304,8 @@ namespace dotNet_Project.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // 5. DETALII
-        [HttpGet]
+        // 5. Show
+        // GET: Bookmarks/Show/5
         [AllowAnonymous]
         public async Task<IActionResult> Show(int? id)
         {
@@ -315,45 +316,36 @@ namespace dotNet_Project.Controllers
                                          .Include(b => b.User)
                                          .Include(b => b.Categories)
                                          .Include(b => b.Votes)
+                                         // Includem User-ul comentariului pentru a avea acces la ProfilePicture
                                          .Include(b => b.Comments).ThenInclude(c => c.User)
                                          .FirstOrDefaultAsync(m => m.Id == id);
 
             if (bookmark == null) return NotFound();
 
-            // --- LOGICA DE VIZIBILITATE ---
-
-            // 1. Aflam cine este userul curent (poate fi null daca nu e logat)
+            // --- LOGICA DE VIZIBILITATE (existenta) ---
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
 
-            // 2. Verificam daca e Privat
             if (!bookmark.IsPublic)
             {
-                // Daca bookmark-ul e privat, verificam daca ai dreptul sa il vezi
-                // Drept au doar: Proprietarul (UserId coincide) SAU Adminul
                 if (bookmark.UserId != currentUserId && !isAdmin)
                 {
-                    // Daca utilizatorul nu e logat deloc, il trimitem la Login
-                    if (currentUserId == null)
-                    {
-                        return Challenge();
-                    }
-
-                    // Daca e logat dar nu are drepturi (nu e owner si nici admin), ii interzicem accesul
+                    if (currentUserId == null) return Challenge();
                     return Forbid();
                 }
             }
 
-            // Daca e Public, codul sare peste if-ul de mai sus si afiseaza direct view-ul (oricine il poate vedea)
+            ViewData["CurrentUserProfilePic"] = null;
+            if (currentUserId != null)
+            {
+                var currentUser = await _userManager.FindByIdAsync(currentUserId);
+                ViewData["CurrentUserProfilePic"] = currentUser?.ProfilePicture;
+            }
+            // ----------------------------
 
             return View(bookmark);
         }
 
-        // ---------------------------------------------------------
-        // METODE NOI (AM PASTRAT AMBELE FUNCTIONALITATI)
-        // ---------------------------------------------------------
-
-        // A. PINTEREST LOGIC (De pe branch Denis)
         // GET: Bookmarks/SaveToCollection/5
         [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> SaveToCollection(int? id)

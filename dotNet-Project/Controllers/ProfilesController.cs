@@ -46,6 +46,11 @@ namespace dotNet_Project.Controllers
             // 2. Gasim categoriile utilizatorului
             var categoriesQuery = _context.Categories.Where(c => c.UserId == targetUserId);
 
+            var bookmarksQuery = _context.Bookmarks
+                                 .Include(b => b.Tags)
+                                 .Include(b => b.Votes)
+                                 .Where(b => b.UserId == targetUserId);
+
             // Regula de vizibilitate:
             // Daca eu NU sunt proprietarul profilului SI nu sunt Admin, vad doar categoriile publice
             bool isOwner = (currentUserId == targetUserId);
@@ -54,9 +59,11 @@ namespace dotNet_Project.Controllers
             if (!isOwner && !isAdmin)
             {
                 categoriesQuery = categoriesQuery.Where(c => c.IsPublic == true);
+                bookmarksQuery = bookmarksQuery.Where(b => b.IsPublic == true);
             }
 
             var categories = await categoriesQuery.ToListAsync();
+            var bookmarks = await bookmarksQuery.OrderByDescending(b => b.CreatedAt).ToListAsync();
 
             // 3. Construim ViewModel-ul
             var model = new UserProfileViewModel
@@ -66,7 +73,8 @@ namespace dotNet_Project.Controllers
                 Description = targetUser.Description,
                 ProfilePicture = targetUser.ProfilePicture,
                 IsOwner = isOwner,
-                Categories = categories
+                Categories = categories,
+                Bookmarks = bookmarks
             };
 
             if (string.IsNullOrEmpty(model.FullName)) model.FullName = targetUser.UserName;

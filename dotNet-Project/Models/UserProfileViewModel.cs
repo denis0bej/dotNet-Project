@@ -8,11 +8,8 @@ namespace dotNet_Project.Models
         public string FullName { get; set; }
         public string Description { get; set; }
         public string ProfilePicture { get; set; }
-
-        // Verificam daca cel care se uita la profil este proprietarul
         public bool IsOwner { get; set; }
-
-        // Lista de categorii (foldere)
         public List<Category> Categories { get; set; } = new List<Category>();
+        public List<Bookmark> Bookmarks { get; set; } = new List<Bookmark>();
     }
 }

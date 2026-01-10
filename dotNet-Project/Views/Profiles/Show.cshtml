@@ -6,10 +6,9 @@
 
 <div class="container mt-5">
 
-    <div class="card shadow-sm mb-5 border-0 bg-light">
+    <div class="card shadow-sm mb-4 border-0 bg-light">
         <div class="card-body p-4">
             <div class="row align-items-center">
-
                 <div class="col-md-3 text-center">
                     @if (!string.IsNullOrEmpty(Model.ProfilePicture))
                     {
@@ -27,7 +26,6 @@
                             <h1 class="display-6 fw-bold text-dark">@Model.FullName</h1>
                             <p class="text-muted mb-3">@Model.UserId</p>
                         </div>
-
                         @if (Model.IsOwner)
                         {
                             <a asp-action="Edit" class="btn btn-outline-primary">
@@ -35,9 +33,7 @@
                             </a>
                         }
                     </div>
-
                     <hr />
-
                     <div class="profile-description">
                         <h5 class="text-secondary text-uppercase fs-6">About Me</h5>
                         @if (!string.IsNullOrEmpty(Model.Description))
@@ -54,55 +50,142 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3><i class="bi bi-folder"></i> Collections / Categories</h3>
+    <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="collections-tab" data-bs-toggle="tab" data-bs-target="#collections" type="button" role="tab" aria-controls="collections" aria-selected="true">
+                <i class="bi bi-folder"></i> Collections (@Model.Categories.Count())
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="bookmarks-tab" data-bs-toggle="tab" data-bs-target="#bookmarks" type="button" role="tab" aria-controls="bookmarks" aria-selected="false">
+                <i class="bi bi-bookmark-heart"></i> Bookmarks (@Model.Bookmarks.Count())
+            </button>
+        </li>
+    </ul>
 
-        @if (Model.IsOwner)
-        {
-            <a asp-controller="Categories" asp-action="New" class="btn btn-success">+ New Category</a>
-        }
-    </div>
+    <div class="tab-content" id="profileTabsContent">
 
-    @if (!Model.Categories.Any())
-    {
-        <div class="alert alert-info text-center">
-            This user has no visible categories.
-        </div>
-    }
-    else
-    {
-        <div class="row">
-            @foreach (var category in Model.Categories)
+        <div class="tab-pane fade show active" id="collections" role="tabpanel" aria-labelledby="collections-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="text-muted">My Collections</h4>
+                @if (Model.IsOwner)
+                {
+                    <a asp-controller="Categories" asp-action="New" class="btn btn-sm btn-success">+ New Category</a>
+                }
+            </div>
+
+            @if (!Model.Categories.Any())
             {
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100 shadow-sm border-0 transition-hover">
-                        <div class="card-body">
-                            <h5 class="card-title fw-bold">
-                                <a asp-controller="Categories" asp-action="Show" asp-route-id="@category.Id" class="text-decoration-none text-dark stretched-link">
-                                    <i class="bi bi-folder2-open text-warning me-2"></i> @category.Name
-                                </a>
-                            </h5>
-
-                            @if (Model.IsOwner)
-                            {
-                                <div class="mt-2">
-                                    <span class="badge @(category.IsPublic ? "bg-success" : "bg-secondary")">
-                                        @(category.IsPublic ? "Public" : "Private")
-                                    </span>
+                <div class="alert alert-info text-center">
+                    This user has no visible collections.
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    @foreach (var category in Model.Categories)
+                    {
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100 shadow-sm border-0 transition-hover">
+                                <div class="card-body">
+                                    <h5 class="card-title fw-bold">
+                                        <a asp-controller="Categories" asp-action="Show" asp-route-id="@category.Id" class="text-decoration-none text-dark stretched-link">
+                                            <i class="bi bi-folder2-open text-warning me-2"></i> @category.Name
+                                        </a>
+                                    </h5>
+                                    @if (Model.IsOwner)
+                                    {
+                                        <div class="mt-2">
+                                            <span class="badge @(category.IsPublic ? "bg-success" : "bg-secondary")">
+                                                @(category.IsPublic ? "Public" : "Private")
+                                            </span>
+                                        </div>
+                                    }
                                 </div>
-                            }
-                        </div>
-
-                        @if (Model.IsOwner)
-                        {
-                            <div class="card-footer bg-white border-top-0 d-flex gap-2 position-relative" style="z-index: 2;">
-                                <a asp-controller="Categories" asp-action="Edit" asp-route-id="@category.Id" class="btn btn-sm btn-light border w-50">Edit</a>
-                                <a asp-controller="Categories" asp-action="Delete" asp-route-id="@category.Id" class="btn btn-sm btn-danger w-50">Delete</a>
+                                @if (Model.IsOwner)
+                                {
+                                    <div class="card-footer bg-white border-top-0 d-flex gap-2 position-relative" style="z-index: 2;">
+                                        <a asp-controller="Categories" asp-action="Edit" asp-route-id="@category.Id" class="btn btn-sm btn-light border w-50">Edit</a>
+                                        <a asp-controller="Categories" asp-action="Delete" asp-route-id="@category.Id" class="btn btn-sm btn-danger w-50">Delete</a>
+                                    </div>
+                                }
                             </div>
-                        }
-                    </div>
+                        </div>
+                    }
                 </div>
             }
         </div>
-    }
+
+        <div class="tab-pane fade" id="bookmarks" role="tabpanel" aria-labelledby="bookmarks-tab">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="text-muted">My Bookmarks</h4>
+                @if (Model.IsOwner)
+                {
+                    <a asp-controller="Bookmarks" asp-action="New" class="btn btn-sm btn-primary">+ New Bookmark</a>
+                }
+            </div>
+
+            @if (!Model.Bookmarks.Any())
+            {
+                <div class="alert alert-light border text-center p-5">
+                    <p class="mb-0 text-muted">No bookmarks found here.</p>
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    @foreach (var bookmark in Model.Bookmarks)
+                    {
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                @if (!string.IsNullOrEmpty(bookmark.MediaUrl))
+                                {
+                                    <img src="@bookmark.MediaUrl" class="card-img-top" alt="Bookmark Image" style="height: 200px; object-fit: cover;">
+                                }
+                                else
+                                {
+                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                        <i class="bi bi-image text-muted fs-1"></i>
+                                    </div>
+                                }
+
+                                <div class="card-body">
+                                    <h5 class="card-title text-truncate">
+                                        <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@bookmark.Id" class="text-decoration-none text-dark">
+                                            @bookmark.Title
+                                        </a>
+                                    </h5>
+                                    <p class="card-text small text-muted text-truncate">
+                                        @(bookmark.Description ?? "No description provided.")
+                                    </p>
+
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <small class="text-muted">
+                                            <i class="bi bi-heart-fill text-danger"></i> @bookmark.LikeCount
+                                        </small>
+                                        <small class="text-muted">
+                                            @bookmark.CreatedAt.ToString("MMM dd, yyyy")
+                                        </small>
+                                    </div>
+                                </div>
+
+                                @if (Model.IsOwner)
+                                {
+                                    <div class="card-footer bg-white">
+                                        <span class="badge @(bookmark.IsPublic ? "bg-success" : "bg-secondary") mb-2">
+                                            @(bookmark.IsPublic ? "Public" : "Private")
+                                        </span>
+                                        <div class="btn-group w-100">
+                                            <a asp-controller="Bookmarks" asp-action="Edit" asp-route-id="@bookmark.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                            <a asp-controller="Bookmarks" asp-action="Delete" asp-route-id="@bookmark.Id" class="btn btn-sm btn-outline-danger">Delete</a>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
 </div>

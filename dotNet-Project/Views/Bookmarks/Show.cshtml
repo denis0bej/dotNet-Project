@@ -124,7 +124,19 @@
                         <form asp-controller="Comments" asp-action="Add" method="post" class="mb-4">
                             <input type="hidden" name="BookmarkId" value="@Model.Id" />
                             <div class="d-flex gap-2">
-                                <img src="https://placehold.co/40" class="rounded-circle" width="40" height="40">
+                                @{
+                                    var myProfilePic = ViewData["CurrentUserProfilePic"] as string;
+                                }
+
+                                @if (!string.IsNullOrEmpty(myProfilePic))
+                                {
+                                    <img src="@myProfilePic" class="rounded-circle border" width="40" height="40" style="object-fit: cover;" alt="Me">
+                                }
+                                else
+                                {
+                                    <img src="https://placehold.co/40" class="rounded-circle" width="40" height="40" alt="Me">
+                                }
+
                                 <div class="flex-grow-1">
                                     <textarea name="Content" class="form-control" rows="2" placeholder="Add a comment..." required></textarea>
                                     <div class="text-end mt-2">
@@ -146,9 +158,22 @@
                         @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
                         {
                             <div class="d-flex gap-3 mb-3">
-                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 40px; height: 40px; font-weight: bold;">
-                                    @(comment.User?.UserName?.Substring(0, 1).ToUpper() ?? "U")
-                                </div>
+
+                                @if (!string.IsNullOrEmpty(comment.User?.ProfilePicture))
+                                {
+                                    <a asp-controller="Profiles" asp-action="Show" asp-route-id="@comment.UserId">
+                                        <img src="@comment.User.ProfilePicture"
+                                             class="rounded-circle flex-shrink-0 border shadow-sm"
+                                             style="width: 40px; height: 40px; object-fit: cover;"
+                                             alt="@comment.User.UserName">
+                                    </a>
+                                }
+                                else
+                                {
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 40px; height: 40px; font-weight: bold;">
+                                        @(comment.User?.UserName?.Substring(0, 1).ToUpper() ?? "U")
+                                    </div>
+                                }
 
                                 <div>
                                     <div class="bg-white p-3 rounded shadow-sm border">
