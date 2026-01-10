@@ -26,6 +26,14 @@
         <div class="row">
             @foreach (var item in Model)
             {
+                // --- FIX: Definim variabilele aici, la inceputul buclei ---
+                bool isOwner = (item.UserId == currentUserId);
+
+                // Verificam si daca item.Votes nu e null inainte de Any()
+                var isLikedByMe = item.Votes != null && item.Votes.Any(v => v.UserId == currentUserId);
+                var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
+                // -----------------------------------------------------------
+
                 <div class="col-md-6 col-lg-4 mb-4">
                     <div class="card h-100 shadow-sm border-0">
 
@@ -63,15 +71,10 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h5 class="card-title fw-bold text-truncate w-75">
-                                    <a asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none text-dark">
+                                    <a asp-action="Show" asp-route-id="@item.Id" class="text-decoration-none text-dark">
                                         @item.Title
                                     </a>
                                 </h5>
-
-                                @{
-                                    var isLikedByMe = item.Votes.Any(v => v.UserId == currentUserId);
-                                    var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
-                                }
 
                                 @if (currentUserId != null)
                                 {
@@ -105,51 +108,47 @@
                             </p>
                         </div>
 
-                    @* --- BUTOANE (Logica din Denis este mai completa pentru Save) --- *@
-                    <div class="card-footer bg-white border-top-0">
-                        <div class="d-flex justify-content-between">
-                            <a asp-action="Show" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
-                                View
-                            </a>
+                        <div class="card-footer bg-white border-top-0">
+                            <div class="d-flex justify-content-between">
+                                <a asp-action="Show" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                                    View
+                                </a>
 
-                            <div>
-                                @if (isOwner)
-                                {
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                }
-                                @if (isOwner || User.IsInRole("Admin"))
-                                {
-                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
-                                }
-                                else
-                                {
-                                    @* Butonul Save (Pinterest Style) *@
-                                    <a asp-action="SaveToCollection" asp-route-id="@item.Id" class="btn btn-sm btn-danger text-white" title="Save to my collection">
-                                        <i class="bi bi-pin-angle-fill"></i> Save
-                                    </a>
-                                }
+                                <div>
+                                    @if (isOwner)
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    }
+                                    @if (isOwner || User.IsInRole("Admin"))
+                                    {
+                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="SaveToCollection" asp-route-id="@item.Id" class="btn btn-sm btn-danger text-white" title="Save to my collection">
+                                            <i class="bi bi-pin-angle-fill"></i> Save
+                                        </a>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        }
-    </div>
+            }
+        </div>
+    }
 </div>
 
 @section Scripts {
     <script>
         async function toggleLike(bookmarkId) {
             try {
-                // Select?m elementele
                 const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
                 const countSpan = document.getElementById(`like-count-${bookmarkId}`);
-
-                // Luam token-ul CSRF pentru securitate (ASP.NET Core il cere la POST)
                 const token = document.getElementsByName('__RequestVerificationToken')[0]?.value;
 
                 const response = await fetch('/Bookmarks/ToggleLike', {
@@ -163,32 +162,20 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    
-                    // Actualiz?m num?rul
                     countSpan.innerText = data.newCount;
 
-                    // Logica pentru iconi??
                     if (data.isLiked) {
-                        // S-a dat LIKE
                         heartIcon.classList.remove('bi-heart');
                         heartIcon.classList.add('bi-heart-fill', 'text-danger');
-
-                        // Animatie CSS (optional, daca ai clasa animate-like definita in CSS)
                         heartIcon.classList.add('animate-like');
-                        setTimeout(() => {
-                            heartIcon.classList.remove('animate-like');
-                        }, 400);
-
+                        setTimeout(() => { heartIcon.classList.remove('animate-like'); }, 400);
                     } else {
-                        // S-a dat UNLIKE
                         heartIcon.classList.add('bi-heart');
                         heartIcon.classList.remove('bi-heart-fill', 'text-danger');
                     }
-                } else {
-                    console.error("Eroare la server");
                 }
             } catch (error) {
-                console.error("Eroare de re?ea:", error);
+                console.error("Network error:", error);
             }
         }
     </script>
