@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using dotNet_Project.Models;
 
 namespace dotNet_Project.Controllers
 {
@@ -204,44 +205,92 @@ namespace dotNet_Project.Controllers
         }
 
         // GET: Categories/Show/5
-        public async Task<IActionResult> Show(int? id)
+        // În CategoriesController.cs
+
+        // GET: Categories/Show/5
+        public async Task<IActionResult> Show(int? id, int? pageNumber)
         {
             if (id == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
+            int pageSize = 15; // Maxim 15 pe pagină
+            int pageIndex = pageNumber ?? 1;
 
-            // Incarcam Categoria IMPREUNA cu Bookmark-urile si User-ul care a creat bookmark-ul
+            // 1. Încărcăm doar DETALIILE Categoriei (fără bookmark-uri deocamdată)
             var category = await _context.Categories
                                          .Include(c => c.User)
-                                         .Include(c => c.Bookmarks)
-                                         .ThenInclude(b => b.User) // Ca sa afisam autorul bookmark-ului
                                          .FirstOrDefaultAsync(m => m.Id == id);
 
             if (category == null) return NotFound();
 
-            // --- VERIFICARI SECURITATE CATEGORIE (FOLDER) ---
-
-            // 1. Daca categoria e privata si nu e a mea (si nu sunt admin) -> Nu am voie
+            // --- VERIFICĂRI SECURITATE ---
+            // Dacă categoria e privată și nu e a mea (și nu sunt admin) -> Nu am voie
             if (category.UserId != currentUserId && !category.IsPublic && !isAdmin)
             {
                 return Forbid();
             }
 
-            // --- FILTRARE CONTINUT (Ce bookmark-uri vad in folder?) ---
+            // 2. Construim Query-ul pentru Bookmark-uri din această categorie
+            var bookmarksQuery = _context.Bookmarks
+                                         .Include(b => b.Categories) // Necesar pentru badge-uri
+                                         .Include(b => b.Votes)
+                                         .Include(b => b.User)
+                                         .Where(b => b.Categories.Any(c => c.Id == id)) // Doar din categoria curentă
+                                         .AsQueryable();
 
-            // Daca sunt proprietarul folderului sau Admin -> Vad toate bookmark-urile (si cele private)
-            // Daca sunt vizitator -> Vad doar bookmark-urile PUBLICE din aceasta categorie
+            // 3. Filtrare Conținut (Ce bookmark-uri văd în folder?)
+            // Dacă nu sunt proprietar/admin, văd doar bookmark-urile publice din acest folder
             if (category.UserId != currentUserId && !isAdmin)
             {
-                category.Bookmarks = category.Bookmarks.Where(b => b.IsPublic == true).ToList();
+                bookmarksQuery = bookmarksQuery.Where(b => b.IsPublic == true);
             }
 
-            // Trimitem flag-uri catre View pentru butoane
-            ViewData["IsOwner"] = (category.UserId == currentUserId);
-            ViewData["IsAdmin"] = isAdmin;
+            // Sortare
+            bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
 
-            return View(category);
+            // 4. PAGINARE
+            var totalItems = await bookmarksQuery.CountAsync();
+            var pagedList = await bookmarksQuery
+                                    .Skip((pageIndex - 1) * pageSize)
+                                    .Take(pageSize)
+                                    .ToListAsync();
+
+            // 5. Mapare la ViewModel (Carduri)
+            var bookmarkViewModels = pagedList.Select(b =>
+            {
+                var appUser = b.User as ApplicationUser;
+                return new BookmarkCardViewModel
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    MediaUrl = b.MediaUrl,
+                    LikeCount = b.Votes.Count,
+                    IsPublic = b.IsPublic,
+                    IsLikedByCurrentUser = currentUserId != null && b.Votes.Any(v => v.UserId == currentUserId),
+                    CategoryNames = b.Categories.Select(c => c.Name).ToList(),
+                    UserDisplayName = !string.IsNullOrEmpty(appUser?.FirstName) ? appUser.FirstName : (b.User?.UserName ?? "Unknown"),
+                    UserProfilePicture = appUser?.ProfilePicture,
+                    UserName = b.User?.UserName
+                };
+            }).ToList();
+
+            var paginatedBookmarks = new PaginatedList<BookmarkCardViewModel>(bookmarkViewModels, totalItems, pageIndex, pageSize);
+
+            // 6. Construim Modelul Final
+            var model = new CategoryDetailsViewModel
+            {
+                Id = category.Id,
+                Name = category.Name,
+                IsPublic = category.IsPublic,
+                UserId = category.UserId,
+                UserDisplayName = category.User?.UserName ?? "Unknown",
+                Bookmarks = paginatedBookmarks
+            };
+
+            ViewData["IsOwner"] = (category.UserId == currentUserId);
+
+            return View(model);
         }
 
     }

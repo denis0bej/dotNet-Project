@@ -188,12 +188,36 @@
                                         <p class="mb-0 text-secondary">@comment.Content</p>
                                     </div>
 
-                                    @if (User.Identity.IsAuthenticated && (comment.User?.UserName == User.Identity.Name || User.IsInRole("Admin")))
+                                    @if (User.Identity.IsAuthenticated)
                                     {
-                                        <div class="ms-2 mt-1">
-                                            <form asp-controller="Comments" asp-action="Delete" asp-route-id="@comment.Id" method="post" class="d-inline">
-                                                <button type="submit" class="btn btn-link btn-sm text-danger p-0 text-decoration-none" style="font-size: 0.85rem;" onclick="return confirm('Delete this comment?')">Delete</button>
-                                            </form>
+                                        <div class="ms-2 mt-1 d-flex gap-2 align-items-center">
+
+                                            @* 1. EDIT BUTTON - Only for the specific user (Controller logic restricts Admins) *@
+                                            @if (comment.User?.UserName == User.Identity.Name)
+                                            {
+                                                <a asp-controller="Comments"
+                                                   asp-action="Edit"
+                                                   asp-route-id="@comment.Id"
+                                                   class="btn btn-link btn-sm text-warning p-0 text-decoration-none"
+                                                   style="font-size: 0.85rem;">
+                                                    Edit
+                                                </a>
+
+                                                <span class="text-muted small">|</span>
+                                            }
+
+                                            @* 2. DELETE BUTTON - For Owner OR Admin *@
+                                            @if (comment.User?.UserName == User.Identity.Name || User.IsInRole("Admin"))
+                                            {
+                                                <form asp-controller="Comments" asp-action="Delete" asp-route-id="@comment.Id" method="post" class="d-inline">
+                                                    <button type="submit"
+                                                            class="btn btn-link btn-sm text-danger p-0 text-decoration-none"
+                                                            style="font-size: 0.85rem;"
+                                                            onclick="return confirm('Delete this comment?')">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            }
                                         </div>
                                     }
                                 </div>

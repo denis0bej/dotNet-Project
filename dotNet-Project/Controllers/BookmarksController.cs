@@ -245,6 +245,7 @@ namespace dotNet_Project.Controllers
             // --- LOGICA UPLOAD IMAGINE (Editare) ---
             if (bookmark.ImageUpload != null)
             {
+                DeleteLocalImage(existingBookmark.MediaUrl);
                 // Daca userul incarca o poza noua, o procesam
                 var storagePath = Path.Combine(_env.WebRootPath, "images", "bookmarks");
                 if (!Directory.Exists(storagePath)) Directory.CreateDirectory(storagePath);
@@ -333,6 +334,8 @@ namespace dotNet_Project.Controllers
             {
                 return Forbid();
             }
+
+            DeleteLocalImage(bookmark.MediaUrl);
 
             _context.Bookmarks.Remove(bookmark);
             await _context.SaveChangesAsync();
@@ -501,5 +504,33 @@ namespace dotNet_Project.Controllers
         {
             return _context.Bookmarks.Any(e => e.Id == id);
         }
+
+        private void DeleteLocalImage(string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath)) return;
+
+            // Verificăm dacă e fișier local (începe cu /images/) și nu e link extern (YouTube)
+            if (relativePath.StartsWith("/images/"))
+            {
+                // Construim calea absolută pe disc (ex: C:\Proiect\wwwroot\images\bookmarks\poza.jpg)
+                // TrimStart('/') scoate primul slash pentru a combina corect calea
+                var absolutePath = Path.Combine(_env.WebRootPath, relativePath.TrimStart('/'));
+
+                if (System.IO.File.Exists(absolutePath))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(absolutePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Putem loga eroarea, dar nu vrem să oprim execuția programului
+                        _logger.LogWarning("Nu s-a putut sterge fisierul: " + absolutePath);
+                    }
+                }
+            }
+        }
+
+
     }
 }

@@ -9,16 +9,16 @@
 @Html.AntiForgeryToken()
 
 <div class="container mt-4 mb-4 text-center">
-    <h1 class="display-5 mb-3">Descoperă Idei Noi</h1>
+    <h1 class="display-5 mb-3">Discover New Ideas</h1>
 
     <div class="btn-group" role="group">
         <a asp-action="Index" asp-route-sortOrder="Recent"
            class="btn @(ViewBag.CurrentSort != "Popular" ? "btn-dark" : "btn-outline-dark")">
-            <i class="bi bi-clock"></i> Cele mai Recente
+            <i class="bi bi-clock"></i> Most Recent
         </a>
         <a asp-action="Index" asp-route-sortOrder="Popular"
            class="btn @(ViewBag.CurrentSort == "Popular" ? "btn-danger" : "btn-outline-danger")">
-            <i class="bi bi-fire"></i> Cele mai Populare
+            <i class="bi bi-fire"></i> Most Popular
         </a>
     </div>
 </div>
@@ -27,8 +27,8 @@
     @if (!Model.Any())
     {
         <div class="alert alert-warning text-center">
-            Nu există bookmark-uri publice momentan.
-            Fii tu primul care postează într-o categorie publică!
+            There are no public bookmarks at the moment.
+            Be the first to post in a public category!
         </div>
     }
 
@@ -127,18 +127,58 @@
            asp-route-sortOrder="@ViewBag.CurrentSort"
            asp-route-pageNumber="@(Model.PageIndex - 1)"
            class="btn btn-outline-secondary me-2 @prevDisabled">
-            <i class="bi bi-arrow-left"></i> Pagina Anterioară
+            <i class="bi bi-arrow-left"></i> Previous Page
         </a>
 
         <span class="align-self-center mx-3 fw-bold text-muted">
-            Pagina @Model.PageIndex din @Model.TotalPages
+            Page @Model.PageIndex of @Model.TotalPages
         </span>
 
         <a asp-action="Index"
            asp-route-sortOrder="@ViewBag.CurrentSort"
            asp-route-pageNumber="@(Model.PageIndex + 1)"
            class="btn btn-outline-secondary @nextDisabled">
-            Pagina Următoare <i class="bi bi-arrow-right"></i>
+            Next Page <i class="bi bi-arrow-right"></i>
         </a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Asigură-te că funcția toggleLike există și aici,
+        // similar cu cea din Bookmarks/Index.cshtml
+        async function toggleLike(bookmarkId) {
+             try {
+                 const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
+                 const countSpan = document.getElementById(`like-count-${bookmarkId}`);
+                 const token = document.getElementsByName('__RequestVerificationToken')[0]?.value;
+
+                 const response = await fetch('/Bookmarks/ToggleLike', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'RequestVerificationToken': token
+                     },
+                     body: JSON.stringify(bookmarkId)
+                 });
+
+                 if (response.ok) {
+                     const data = await response.json();
+                     countSpan.innerText = data.newCount;
+
+                     if (data.isLiked) {
+                         heartIcon.classList.remove('bi-heart');
+                         heartIcon.classList.add('bi-heart-fill', 'text-danger');
+                         heartIcon.classList.add('animate-like');
+                         setTimeout(() => { heartIcon.classList.remove('animate-like'); }, 400);
+                     } else {
+                         heartIcon.classList.add('bi-heart');
+                         heartIcon.classList.remove('bi-heart-fill', 'text-danger');
+                     }
+                 }
+             } catch (error) {
+                 console.error("Network error:", error);
+             }
+         }
+    </script>
+}
