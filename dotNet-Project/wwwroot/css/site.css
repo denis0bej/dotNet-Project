@@ -1,44 +1,124 @@
 html {
-  font-size: 14px;
+    font-size: 14px;
 }
 
 @media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+    html {
+        font-size: 16px;
+    }
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
 html {
-  position: relative;
-  min-height: 100%;
+    position: relative;
+    min-height: 100%;
 }
 
 body {
-  margin-bottom: 60px;
+    margin-bottom: 60px;
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+    color: var(--bs-secondary-color);
+    text-align: end;
 }
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+    text-align: start;
 }
 
-/* Adaug? asta la finalul fi?ierului site.css */
+/* --- STILURI GENERALE PROIECT --- */
 
-@keyframes heart-bounce {
+/* Imagini carduri */
+.card-img-custom {
+    height: 250px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.card-img-placeholder {
+    height: 250px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Badge-uri */
+.card-overlay-badges {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0.9;
+}
+
+.text-pre-wrap {
+    white-space: pre-wrap;
+}
+
+.scrollable-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.icon-placeholder-large {
+    font-size: 3rem;
+}
+
+.img-details-fluid {
+    width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+}
+
+/* Cursor pointer generic */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+
+/* =========================================
+   ANIMATII SI INTERACTIUNI LIKE (NOU)
+   ========================================= */
+
+/* 1. Containerul butonului de like */
+.like-container {
+    transition: transform 0.1s ease-in-out;
+    display: inline-flex; /* Asigură alinierea corectă */
+    align-items: center;
+}
+
+    /* Când dai hover pe container, iconița crește fluent */
+    .like-container:hover .like-icon {
+        transform: scale(1.2); /* Crește cu 20% */
+        color: #dc3545; /* Devine roșie la hover (opțional) */
+    }
+
+/* 2. Iconița în sine - tranzitie lina */
+.like-icon {
+    /* Tranziție complexă pentru mișcări naturale */
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease-in-out;
+    display: inline-block;
+}
+
+/* --- ANIMATIA DE LIKE (Bătaie de inimă) --- */
+@keyframes heartBeat {
     0% {
         transform: scale(1);
     }
 
+    25% {
+        transform: scale(1.3);
+    }
+
     50% {
-        transform: scale(1.4);
+        transform: scale(1);
+    }
+
+    75% {
+        transform: scale(1.3);
     }
 
     100% {
@@ -47,14 +127,42 @@ body {
 }
 
 .animate-like {
-    animation: heart-bounce 0.4s ease-in-out;
+    animation: heartBeat 0.6s ease-in-out;
 }
 
-.bi-heart, .bi-heart-fill {
-    transition: color 0.3s ease, transform 0.2s ease;
-    display: inline-block;
+/* --- ANIMATIA DE UNLIKE (Inimă Frântă) --- */
+@keyframes heartBreak {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        color: #dc3545;
+    }
+
+    20% {
+        transform: translateX(-2px) rotate(-5deg);
+    }
+
+    40% {
+        transform: translateX(2px) rotate(5deg);
+    }
+
+    60% {
+        transform: translateX(-2px) rotate(-5deg);
+        opacity: 0.8;
+    }
+
+    80% {
+        transform: translateX(2px) rotate(5deg) scale(0.9);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(0.8) translateY(5px);
+        opacity: 0; /* Dispare complet */
+    }
 }
 
-.pointer:hover i {
-    transform: scale(1.1);
+.animate-break {
+    /* forwards păstrează starea finală (invizibil) până scoatem clasa cu JS */
+    animation: heartBreak 0.7s ease-out forwards;
 }

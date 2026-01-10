@@ -1,10 +1,13 @@
-﻿@model dotNet_Project.Models.Category
+﻿@using System.Security.Claims
+@model dotNet_Project.Models.Category
 
 @{
     ViewData["Title"] = "Category: " + Model.Name;
-    // Preluam datele din ViewData, cu protectie null-check
-    bool isOwner = ViewData["IsOwner"] as bool? ?? false;
-    bool isAdmin = ViewData["IsAdmin"] as bool? ?? false;
+    bool isOwner = (bool)ViewData["IsOwner"] as bool? ?? false;
+    bool isAdmin = (bool)ViewData["IsAdmin"] as bool? ?? false;
+
+    // Preluăm ID-ul userului curent pentru a verifica like-urile
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
 <div class="container mt-4">
@@ -73,15 +76,38 @@
                             }
                         </div>
 
-                        <div class="card-body d-flex flex-column">
-                            <h5 class="card-title">
-                                <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@bookmark.Id" class="text-decoration-none text-dark stretched-link">
-                                    @bookmark.Title
-                                </a>
-                            </h5>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title w-75">
+                                    <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@bookmark.Id" class="text-decoration-none text-dark fw-bold">
+                                        @bookmark.Title
+                                    </a>
+                                </h5>
 
-                            <p class="card-text text-muted small flex-grow-1">
-                                @if (!string.IsNullOrEmpty(bookmark.Description) && bookmark.Description.Length > 80)
+                                @{
+                                    // Calculăm starea like-ului pentru fiecare bookmark
+                                    var isLikedByMe = bookmark.Votes.Any(v => v.UserId == currentUserId);
+                                    var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
+                                }
+
+                                @if (currentUserId != null)
+                                {
+                                    <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@bookmark.Id)">
+                                        <i id="heart-icon-@bookmark.Id" class="bi @heartClass fs-5 me-1 like-icon"></i>
+                                        <span id="like-count-@bookmark.Id" class="fw-bold small">@bookmark.LikeCount</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-items-center text-muted">
+                                        <i class="bi bi-heart fs-5 me-1"></i>
+                                        <span class="fw-bold small">@bookmark.LikeCount</span>
+                                    </div>
+                                }
+                            </div>
+
+                            <p class="card-text text-muted small">
+                                @if (bookmark.Description?.Length > 100)
                                 {
                                     @bookmark.Description.Substring(0, 80)
                         

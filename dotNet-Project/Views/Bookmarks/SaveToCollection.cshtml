@@ -22,7 +22,7 @@
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">My Categories</label>
-                            <div class="card p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
+                            <div class="card p-3 bg-light scrollable-list">
                                 @if (ViewBag.CategoryList != null)
                                 {
                                     @foreach (var category in (IEnumerable<SelectListItem>)ViewBag.CategoryList)

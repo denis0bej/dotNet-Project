@@ -1,117 +1,109 @@
+@using System.Security.Claims
 @model IEnumerable<dotNet_Project.Models.Bookmark>
-@using Microsoft.AspNetCore.Identity
-@inject UserManager<ApplicationUser> UserManager
 
 @{
-    ViewData["Title"] = "All Bookmarks";
-    var currentUserId = UserManager.GetUserId(User);
+    ViewData["Title"] = "My Bookmarks";
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>All Bookmarks</h1>
+        <h1>My Collection & Public Bookmarks</h1>
         <a asp-action="New" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Add New
+            <i class="bi bi-plus-lg"></i> New Bookmark
         </a>
     </div>
 
     @if (!Model.Any())
     {
-        <div class="alert alert-info">
-            Look how much empty... Fill it with some bookmarks!
+        <div class="alert alert-info text-center">
+            You haven't saved any bookmarks yet.
+            <a asp-action="New">Create one now!</a>
         </div>
     }
+    else
+    {
+        <div class="row">
+            @foreach (var item in Model)
+            {
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card h-100 shadow-sm border-0">
 
-    <div class="row">
-        @foreach (var item in Model)
-        {
-            // COMBINARE LOGICA: Calculam si daca e owner, si daca a dat like
-            bool isOwner = (item.UserId == currentUserId);
-            
-            var isLikedByMe = item.Votes != null && item.Votes.Any(v => v.UserId == currentUserId);
-            var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
-
-            <div class="col-md-4 mb-4">
-                <div class="card h-100 shadow-sm">
-
-                    @* --- SECTIUNE IMAGINE --- *@
-                    @if (!string.IsNullOrEmpty(item.MediaUrl) && 
-                        (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg") || item.MediaUrl.EndsWith(".webp")))
-                    {
-                        <img src="@item.MediaUrl" class="card-img-top" alt="@item.Title" style="height: 200px; object-fit: cover;">
-                    }
-                    else
-                    {
-                        <div class="card-img-top bg-secondary text-white d-flex justify-content-center align-items-center" style="height: 200px;">
-                            <span class="fs-1"><i class="bi bi-bookmark"></i></span>
-                        </div>
-                    }
-
-                    <div class="card-body">
-                        @* --- TITLU + BADGE PRIVAT + LIKE BUTTON --- *@
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div style="max-width: 75%;">
-                                <h5 class="card-title mb-0 text-truncate" title="@item.Title">@item.Title</h5>
-                                
-                                @if (!item.IsPublic)
-                                {
-                                    <span class="badge bg-danger mt-1" title="Private Bookmark">
-                                        <i class="bi bi-lock-fill"></i> Private
-                                    </span>
-                                }
-                            </div>
-
-                            @* Butonul de Like (din Master) *@
-                            <div class="d-flex align-items-center" style="cursor: pointer;" onclick="toggleLike(@item.Id)">
-                                <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1"></i>
-                                <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
-                            </div>
-                        </div>
-
-                        @* --- AFIȘARE LISTĂ CATEGORII (din Denis) --- *@
-                        <div class="mb-2">
-                            <i class="bi bi-folder2-open text-muted"></i>
-                            @if (item.Categories != null && item.Categories.Any())
+                        <div style="position: relative;">
+                            @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
                             {
-                                @foreach (var cat in item.Categories)
-                                {
-                                    <a asp-controller="Categories" asp-action="Show" asp-route-id="@cat.Id" class="text-decoration-none">
-                                        <span class="badge bg-light text-dark border me-1">@cat.Name</span>
-                                    </a>
-                                }
+                                <img src="@item.MediaUrl" class="card-img-top card-img-custom" alt="@item.Title">
+                            }
+                            else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
+                            {
+                                <div class="card-img-top bg-black card-img-placeholder">
+                                    <i class="bi bi-youtube text-danger fs-1"></i>
+                                </div>
                             }
                             else
                             {
-                                <span class="text-muted small">Uncategorized</span>
+                                <div class="card-img-top bg-light card-img-placeholder">
+                                    <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
+                                </div>
                             }
-                        </div>
 
-                        <p class="card-text text-truncate">
-                            @item.Description
-                        </p>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">
-                                <i class="bi bi-person"></i> 
-                                <a asp-controller="Categories" asp-action="Profile" asp-route-userId="@item.UserId" class="text-muted text-decoration-none">
-                                    @(item.User?.UserName ?? "Unknown")
-                                </a>
-                            </small>
-                            <small class="text-muted">@item.CreatedAt.ToString("dd/MM/yyyy")</small>
-                        </div>
-
-                        <div class="mt-2">
-                            @if (item.Tags != null)
-                            {
-                                foreach (var tag in item.Tags)
+                            <div class="card-overlay-badges">
+                                @if (item.Categories != null)
                                 {
-                                    <span class="badge bg-secondary me-1">
-                                        <i class="bi bi-hash"></i>@tag.Name
-                                    </span>
+                                    @foreach (var cat in item.Categories)
+                                    {
+                                        <span class="badge bg-light text-dark shadow-sm me-1">
+                                            @cat.Name
+                                        </span>
+                                    }
                                 }
-                            }
+                            </div>
                         </div>
-                    </div>
+
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title fw-bold text-truncate w-75">
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none text-dark">
+                                        @item.Title
+                                    </a>
+                                </h5>
+
+                                @{
+                                    var isLikedByMe = item.Votes.Any(v => v.UserId == currentUserId);
+                                    var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
+                                }
+
+                                @if (currentUserId != null)
+                                {
+                                    <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@item.Id)">
+                                        <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1 like-icon"></i>
+                                        <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-items-center text-muted">
+                                        <i class="bi bi-heart fs-4 me-1"></i>
+                                        <span class="fw-bold">@item.LikeCount</span>
+                                    </div>
+                                }
+                            </div>
+
+                            <p class="card-subtitle text-muted mb-2 small">
+                                <i class="bi bi-person-circle"></i> @(item.User?.UserName ?? "Unknown")
+                            </p>
+
+                            <p class="card-text text-truncate text-muted">
+                                @if (!string.IsNullOrEmpty(item.Description) && item.Description.Length > 80)
+                                {
+                                    @item.Description.Substring(0, 80) <text>...</text>
+                                }
+                                else
+                                {
+                                    @item.Description
+                                }
+                            </p>
+                        </div>
 
                     @* --- BUTOANE (Logica din Denis este mai completa pentru Save) --- *@
                     <div class="card-footer bg-white border-top-0">
@@ -153,7 +145,7 @@
     <script>
         async function toggleLike(bookmarkId) {
             try {
-                // Selectăm elementele
+                // Select?m elementele
                 const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
                 const countSpan = document.getElementById(`like-count-${bookmarkId}`);
 
@@ -172,10 +164,10 @@
                 if (response.ok) {
                     const data = await response.json();
                     
-                    // Actualizăm numărul
+                    // Actualiz?m num?rul
                     countSpan.innerText = data.newCount;
 
-                    // Logica pentru iconiță
+                    // Logica pentru iconi??
                     if (data.isLiked) {
                         // S-a dat LIKE
                         heartIcon.classList.remove('bi-heart');
@@ -196,7 +188,7 @@
                     console.error("Eroare la server");
                 }
             } catch (error) {
-                console.error("Eroare de rețea:", error);
+                console.error("Eroare de re?ea:", error);
             }
         }
     </script>
