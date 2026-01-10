@@ -6,6 +6,8 @@
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
+@Html.AntiForgeryToken()
+
 <div class="container mt-4 mb-4 text-center">
     <h1 class="display-5 mb-3">Descoperă Idei Noi</h1>
 
@@ -32,7 +34,6 @@
     <div class="row">
         @foreach (var item in Model)
         {
-            // Verificăm Like-ul pentru userul curent
             var isLikedByMe = item.Votes.Any(v => v.UserId == currentUserId);
             var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
 
@@ -42,22 +43,22 @@
                     <div style="position: relative;">
                         @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
                         {
-                            <img src="@item.MediaUrl" class="card-img-top rounded-top" alt="@item.Title" style="height: 250px; object-fit: cover;">
+                            <img src="@item.MediaUrl" class="card-img-top rounded-top card-img-custom" alt="@item.Title">
                         }
                         else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
                         {
-                            <div class="card-img-top bg-black d-flex justify-content-center align-items-center" style="height: 250px;">
+                            <div class="card-img-top bg-black card-img-placeholder">
                                 <i class="bi bi-youtube text-danger fs-1"></i>
                             </div>
                         }
                         else
                         {
-                            <div class="card-img-top bg-light d-flex justify-content-center align-items-center" style="height: 250px;">
+                            <div class="card-img-top bg-light card-img-placeholder">
                                 <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
                             </div>
                         }
 
-                        <div style="position: absolute; top: 10px; right: 10px; opacity: 0.9;">
+                        <div class="card-overlay-badges">
                             @if (item.Categories != null)
                             {
                                 @foreach (var cat in item.Categories)
@@ -72,12 +73,14 @@
 
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="card-title fw-bold text-truncate" style="max-width: 80%;">@item.Title</h5>
+                            <h5 class="card-title fw-bold text-truncate w-75">@item.Title</h5>
 
                             @if (currentUserId != null)
                             {
-                                <div class="d-flex align-items-center pointer" style="cursor: pointer;" onclick="toggleLike(@item.Id)">
-                                    <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1"></i>
+                                <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@item.Id)">
+
+                                    <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1 like-icon"></i>
+
                                     <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
                                 </div>
                             }
@@ -109,40 +112,3 @@
         }
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        async function toggleLike(bookmarkId) {
-            try {
-                const response = await fetch('/Bookmarks/ToggleLike', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': document.getElementsByName('__RequestVerificationToken')[0]?.value
-                    },
-                    body: JSON.stringify(bookmarkId)
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-
-                    const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
-                    const countSpan = document.getElementById(`like-count-${bookmarkId}`);
-
-                    countSpan.innerText = data.newCount;
-
-                    if (data.isLiked) {
-                        heartIcon.classList.remove('bi-heart');
-                        heartIcon.classList.add('bi-heart-fill', 'text-danger', 'animate-like');
-                        setTimeout(() => heartIcon.classList.remove('animate-like'), 400);
-                    } else {
-                        heartIcon.classList.add('bi-heart');
-                        heartIcon.classList.remove('bi-heart-fill', 'text-danger');
-                    }
-                }
-            } catch (error) {
-                console.error("Eroare:", error);
-            }
-        }
-    </script>
-}

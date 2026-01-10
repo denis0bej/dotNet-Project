@@ -1,13 +1,36 @@
-﻿@model dotNet_Project.Models.Bookmark
+﻿@using System.Security.Claims
+@model dotNet_Project.Models.Bookmark
 
 @{
     ViewData["Title"] = "Bookmark Details";
+    // --- LOGICA PENTRU LIKE ---
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    // Verificăm dacă lista de voturi există și dacă userul curent a votat
+    var isLikedByMe = Model.Votes != null && Model.Votes.Any(v => v.UserId == currentUserId);
+    var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
 }
 
 <div class="container mt-5">
     <div class="card shadow-lg">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h3 class="mb-0">@Model.Title</h3>
+            <div class="d-flex align-items-center gap-3">
+                <h3 class="mb-0">@Model.Title</h3>
+
+                @if (currentUserId != null)
+                {
+                    <div class="d-flex align-items-center cursor-pointer like-container bg-white text-primary px-3 py-1 rounded-pill shadow-sm" onclick="toggleLike(@Model.Id)">
+                        <i id="heart-icon-@Model.Id" class="bi @heartClass fs-5 me-2 like-icon"></i>
+                        <span id="like-count-@Model.Id" class="fw-bold">@Model.LikeCount</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center bg-white text-primary px-3 py-1 rounded-pill shadow-sm">
+                        <i class="bi bi-heart fs-5 me-2"></i>
+                        <span class="fw-bold">@Model.LikeCount</span>
+                    </div>
+                }
+            </div>
 
             <div>
                 @foreach (var cat in Model.Categories)
@@ -24,11 +47,10 @@
                 <div class="col-md-6">
                     @if (!string.IsNullOrEmpty(Model.MediaUrl))
                     {
-                        // Verificare simpla pentru YouTube Embed
+                        // Verificare YouTube
                         if (Model.MediaUrl.Contains("youtube.com") || Model.MediaUrl.Contains("youtu.be"))
                         {
                             var videoId = Model.MediaUrl.Split("v=").LastOrDefault();
-                            // Tratare cazuri simple de link youtu.be/ID
                             if (Model.MediaUrl.Contains("youtu.be/"))
                             {
                                 videoId = Model.MediaUrl.Split("youtu.be/").LastOrDefault()?.Split("?").FirstOrDefault();
@@ -41,9 +63,9 @@
                         // Verificare Imagine
                         else if (Model.MediaUrl.EndsWith(".jpg") || Model.MediaUrl.EndsWith(".png") || Model.MediaUrl.EndsWith(".jpeg") || Model.MediaUrl.EndsWith(".webp"))
                         {
-                            <img src="@Model.MediaUrl" class="img-fluid rounded" alt="@Model.Title">
+                            <img src="@Model.MediaUrl" class="img-fluid rounded img-details-fluid" alt="@Model.Title">
                         }
-                        // Link simplu
+                        // Link extern
                         else
                         {
                             <div class="alert alert-secondary">
@@ -55,7 +77,7 @@
                     else
                     {
                         <div class="text-center p-5 bg-light rounded">
-                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                            <i class="bi bi-image text-muted icon-placeholder-large"></i>
                             <p>No media content</p>
                         </div>
                     }
@@ -63,7 +85,7 @@
 
                 <div class="col-md-6">
                     <h5>Description</h5>
-                    <p class="lead" style="font-size: 1rem; white-space: pre-wrap;">@Model.Description</p>
+                    <p class="lead text-pre-wrap" style="font-size: 1rem;">@Model.Description</p>
 
                     <hr />
 
@@ -96,9 +118,9 @@
                     <div class="mt-4 d-flex gap-2">
                         <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
                         <a asp-action="Index" class="btn btn-secondary">Back to list</a>
-
                         <a asp-action="SaveToCollection" asp-route-id="@Model.Id" class="btn btn-outline-primary">Save to My Category</a>
                     </div>
+
                     <hr class="my-4" />
 
                     <div class="comments-section">
@@ -120,16 +142,14 @@
                                                 <div>
                                                     @if (User.Identity.IsAuthenticated)
                                                     {
-                                                        // BUTON EDITARE: Doar proprietarul (Userul curent)
-                                                        @if (comment.User?.UserName == User.Identity.Name)
+                                                        if (comment.User?.UserName == User.Identity.Name)
                                                         {
                                                             <a asp-controller="Comments" asp-action="Edit" asp-route-id="@comment.Id" class="btn btn-sm btn-link text-warning p-0 me-2">
                                                                 <i class="bi bi-pencil"></i> Editează
                                                             </a>
                                                         }
 
-                                                        // BUTON ȘTERGERE: Proprietarul SAU Adminul
-                                                        @if (comment.User?.UserName == User.Identity.Name || User.IsInRole("Admin"))
+                                                        if (comment.User?.UserName == User.Identity.Name || User.IsInRole("Admin"))
                                                         {
                                                             <form asp-controller="Comments" asp-action="Delete" asp-route-id="@comment.Id" method="post" class="d-inline">
                                                                 <button type="submit" class="btn btn-sm btn-link text-danger p-0" onclick="return confirm('Ești sigur?')">
@@ -140,7 +160,7 @@
                                                     }
                                                 </div>
                                             </div>
-                                            <p class="mt-1 mb-0" style="white-space: pre-wrap;">@comment.Content</p>
+                                            <p class="mt-1 mb-0 text-pre-wrap">@comment.Content</p>
                                         </div>
                                     </div>
                                 }
@@ -155,11 +175,9 @@
                         {
                             <form asp-controller="Comments" asp-action="Add" method="post">
                                 <input type="hidden" name="BookmarkId" value="@Model.Id" />
-
                                 <div class="form-group mb-2">
                                     <textarea name="Content" class="form-control" rows="3" placeholder="Scrie un comentariu..." required></textarea>
                                 </div>
-
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i class="bi bi-send"></i> Postează Comentariul
                                 </button>
