@@ -26,33 +26,28 @@ namespace dotNet_Project.Controllers
         }
 
         // GET: /Profiles/Show/5 (sau id-ul utilizatorului)
-        public async Task<IActionResult> Show(string id)
+        // În ProfilesController.cs
+
+        public async Task<IActionResult> Show(string id, int? categoryPage, int? bookmarkPage)
         {
             var currentUserId = _userManager.GetUserId(User);
-
-            // Daca nu primim niciun ID in URL, presupunem ca userul vrea sa isi vada propriul profil
             string targetUserId = id ?? currentUserId;
+            int pageSize = 15; // Maxim 15 elemente per pagină
 
-            // Daca targetUserId e null (nu e logat si nu a dat ID), redirect la login
-            if (targetUserId == null)
-            {
-                return Redirect("/Identity/Account/Login");
-            }
+            if (targetUserId == null) return Redirect("/Identity/Account/Login");
 
-            // 1. Gasim utilizatorul tinta
             var targetUser = await _userManager.FindByIdAsync(targetUserId);
             if (targetUser == null) return NotFound("User not found");
 
-            // 2. Gasim categoriile utilizatorului
-            var categoriesQuery = _context.Categories.Where(c => c.UserId == targetUserId);
-
+            // --- 1. PREGĂTIRE QUERY-URI ---
+            var categoriesQuery = _context.Categories.Where(c => c.UserId == targetUserId).AsQueryable();
             var bookmarksQuery = _context.Bookmarks
-                                 .Include(b => b.Tags)
-                                 .Include(b => b.Votes)
-                                 .Where(b => b.UserId == targetUserId);
+                                        .Include(b => b.Categories)
+                                        .Include(b => b.Votes)
+                                        .Where(b => b.UserId == targetUserId)
+                                        .AsQueryable();
 
-            // Regula de vizibilitate:
-            // Daca eu NU sunt proprietarul profilului SI nu sunt Admin, vad doar categoriile publice
+            // Reguli vizibilitate
             bool isOwner = (currentUserId == targetUserId);
             bool isAdmin = User.IsInRole("Admin");
 
@@ -62,22 +57,68 @@ namespace dotNet_Project.Controllers
                 bookmarksQuery = bookmarksQuery.Where(b => b.IsPublic == true);
             }
 
-            var categories = await categoriesQuery.ToListAsync();
-            var bookmarks = await bookmarksQuery.OrderByDescending(b => b.CreatedAt).ToListAsync();
+            // Sortare implicită
+            categoriesQuery = categoriesQuery.OrderByDescending(c => c.Name); // Sau după nume
+            bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
 
-            // 3. Construim ViewModel-ul
+            // --- 2. PAGINARE CATEGORII ---
+            int catPageIndex = categoryPage ?? 1;
+            var totalCategories = await categoriesQuery.CountAsync();
+
+            var pagedCategories = await categoriesQuery
+                .Skip((catPageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var paginatedCategories = new PaginatedList<Category>(
+                pagedCategories, totalCategories, catPageIndex, pageSize);
+
+
+            // --- 3. PAGINARE BOOKMARK-URI ---
+            int bookPageIndex = bookmarkPage ?? 1;
+            var totalBookmarks = await bookmarksQuery.CountAsync();
+
+            var pagedBookmarksRaw = await bookmarksQuery
+                .Skip((bookPageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            // Mapare către ViewModel
+            var bookmarkViewModels = pagedBookmarksRaw.Select(b => new BookmarkCardViewModel
+            {
+                Id = b.Id,
+                Title = b.Title,
+                MediaUrl = b.MediaUrl,
+                LikeCount = b.Votes.Count,
+                IsPublic = b.IsPublic,
+                CategoryNames = b.Categories.Select(c => c.Name).ToList(),
+                IsLikedByCurrentUser = currentUserId != null && b.Votes.Any(v => v.UserId == currentUserId),
+                UserDisplayName = $"{targetUser.FirstName} {targetUser.LastName}".Trim(),
+                UserProfilePicture = targetUser.ProfilePicture,
+                UserName = targetUser.UserName
+            }).ToList();
+
+            var paginatedBookmarks = new PaginatedList<BookmarkCardViewModel>(
+                bookmarkViewModels, totalBookmarks, bookPageIndex, pageSize);
+
+
+            // --- 4. CONSTRUIRE MODEL ---
             var model = new UserProfileViewModel
             {
                 UserId = targetUser.Id,
-                FullName = $"{targetUser.FirstName} {targetUser.LastName}".Trim(),
+                Email = targetUser.Email,
+                FullName = !string.IsNullOrEmpty($"{targetUser.FirstName} {targetUser.LastName}".Trim())
+                           ? $"{targetUser.FirstName} {targetUser.LastName}".Trim()
+                           : targetUser.UserName,
                 Description = targetUser.Description,
                 ProfilePicture = targetUser.ProfilePicture,
                 IsOwner = isOwner,
-                Categories = categories,
-                Bookmarks = bookmarks
+                Categories = paginatedCategories, // Atribuim lista paginată
+                Bookmarks = paginatedBookmarks    // Atribuim lista paginată
             };
 
-            if (string.IsNullOrEmpty(model.FullName)) model.FullName = targetUser.UserName;
+            // Stocăm pagina curentă în ViewBag pentru a ști ce tab să activăm la reload (Opțional, dar util)
+            ViewBag.ActiveTab = (bookmarkPage > 1 && categoryPage == null) ? "bookmarks" : "collections";
 
             return View(model);
         }
@@ -105,9 +146,7 @@ namespace dotNet_Project.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ProfileDetailsModel model)
         {
-            // ... codul tau existent pentru Edit POST ...
-            // (Copy-paste la ce ai scris in pasul anterior, e perfect)
-            // Doar sa te asiguri ca metodele Edit raman in clasa.
+           
             if (!ModelState.IsValid) return View(model);
 
             var user = await _userManager.GetUserAsync(User);
@@ -119,6 +158,8 @@ namespace dotNet_Project.Controllers
 
             if (model.ProfileImage != null)
             {
+                DeleteLocalImage(user.ProfilePicture);
+
                 string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "profiles");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
                 string uniqueFileName = Guid.NewGuid().ToString() + "_" + model.ProfileImage.FileName;
@@ -133,6 +174,19 @@ namespace dotNet_Project.Controllers
             await _userManager.UpdateAsync(user);
             TempData["SuccessMessage"] = "Profile updated successfully!";
             return RedirectToAction("Edit");
+        }
+
+        private void DeleteLocalImage(string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath)) return;
+            if (relativePath.StartsWith("/images/"))
+            {
+                var absolutePath = Path.Combine(_webHostEnvironment.WebRootPath, relativePath.TrimStart('/'));
+                if (System.IO.File.Exists(absolutePath))
+                {
+                    System.IO.File.Delete(absolutePath);
+                }
+            }
         }
     }
 }

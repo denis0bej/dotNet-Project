@@ -1,9 +1,10 @@
 using System.Diagnostics;
-using dotNet_Project.Data;       // Acces la DB
-using dotNet_Project.Models;     // Acces la Modele
+using System.Security.Claims; // Necesar pentru User.FindFirstValue
+using dotNet_Project.Data;
+using dotNet_Project.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore; // Pentru Include, ToListAsync etc.
+using Microsoft.EntityFrameworkCore;
 
 namespace dotNet_Project.Controllers
 {
@@ -13,7 +14,6 @@ namespace dotNet_Project.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        // Injectăm Contextul și UserManager-ul prin constructor
         public HomeController(ILogger<HomeController> logger, ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _logger = logger;
@@ -21,41 +21,44 @@ namespace dotNet_Project.Controllers
             _userManager = userManager;
         }
 
-        // Metoda Index primește un parametru opțional "sortOrder"
-        // Parametrul 'searchString' vine din input-ul formularului
-        public async Task<IActionResult> Index(string searchString, string sortOrder)
+        // INDEX COMBINAT: Search/Sort (V2) + Paginare/ViewModel (V1)
+        public async Task<IActionResult> Index(string searchString, string sortOrder, int? pageNumber)
         {
-            // Salvăm parametrii pentru View (ca să știm ce buton să colorăm)
+            // Salvăm parametrii în View (pentru butoane și link-uri de paginare)
             ViewData["CurrentFilter"] = searchString;
             ViewData["CurrentSort"] = sortOrder;
 
-            // 1. Query de bază: Luăm DOAR postările PUBLICE
+            int pageSize = 15; // Maxim 15 bookmark-uri per pagină
+            int pageIndex = pageNumber ?? 1;
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // 1. QUERY DE BAZĂ (Doar Publice)
             IQueryable<Bookmark> bookmarksQuery = _context.Bookmarks
                                          .Include(b => b.User)
                                          .Include(b => b.Votes)
                                          .Include(b => b.Categories)
-                                         .Where(b => b.IsPublic); // <--- Doar cele publice
+                                         .Where(b => b.IsPublic);
 
-            // 2. LOGICA DE CĂUTARE AVANSATĂ (Weighted Search)
+            // 2. LOGICA DE CĂUTARE AVANSATĂ (Din Varianta 2)
             if (!string.IsNullOrEmpty(searchString))
             {
-                // A. FILTRARE: Luăm tot ce se potrivește (Titlu OR Descriere OR Categorie)
+                // A. FILTRARE
                 bookmarksQuery = bookmarksQuery.Where(b =>
                     b.Title.Contains(searchString) ||
                     (b.Description != null && b.Description.Contains(searchString)) ||
                     b.Categories.Any(c => c.Name.Contains(searchString)));
 
-                // B. PRIORITIZARE (Ranking)
-                // Dacă Titlul conține textul, primește prioritate 0 (Maximă). Altfel 1.
+                // B. PRIORITIZARE (Ranking: Titlu > Descriere)
                 bookmarksQuery = bookmarksQuery.OrderBy(b => b.Title.Contains(searchString) ? 0 : 1);
 
-                // C. SORTARE SECUNDARĂ (În funcție de preferința utilizatorului)
-                // Folosim "ThenBy" pentru a nu strica prioritatea titlului
+                // C. SORTARE SECUNDARĂ (ThenBy)
                 switch (sortOrder)
                 {
                     case "Popular":
                         bookmarksQuery = ((IOrderedQueryable<Bookmark>)bookmarksQuery).ThenByDescending(b => b.LikeCount);
                         break;
+                    case "Recent": // Am uniformizat "Recent" cu "Date"
                     case "Date":
                     default:
                         bookmarksQuery = ((IOrderedQueryable<Bookmark>)bookmarksQuery).ThenByDescending(b => b.CreatedAt);
@@ -64,13 +67,13 @@ namespace dotNet_Project.Controllers
             }
             else
             {
-                // 3. SORTARE STANDARD (Când nu căutăm nimic)
-                // Aici folosim OrderBy simplu
+                // 3. SORTARE STANDARD (Fără căutare)
                 switch (sortOrder)
                 {
                     case "Popular":
                         bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.LikeCount);
                         break;
+                    case "Recent":
                     case "Date":
                     default:
                         bookmarksQuery = bookmarksQuery.OrderByDescending(b => b.CreatedAt);
@@ -78,8 +81,43 @@ namespace dotNet_Project.Controllers
                 }
             }
 
-            // 4. Returnare listă
-            return View(await bookmarksQuery.ToListAsync());
+            // 4. PAGINARE (Din Varianta 1)
+            // Numărăm totalul după filtrare, dar înainte de paginare
+            var totalItems = await bookmarksQuery.CountAsync();
+
+            // Luăm doar "felia" necesară din baza de date
+            var dbList = await bookmarksQuery
+                                .Skip((pageIndex - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToListAsync();
+
+            // 5. MAPARE ÎN VIEWMODEL (Din Varianta 1)
+            // Transformăm datele brute în ViewModel pentru a avea UserProfilePicture, IsLikedByCurrentUser etc.
+            var viewModelList = dbList.Select(b =>
+            {
+                var appUser = b.User as ApplicationUser;
+                return new BookmarkCardViewModel
+                {
+                    Id = b.Id,
+                    Title = b.Title,
+                    Description = b.Description, // Important pentru căutare
+                    MediaUrl = b.MediaUrl,
+                    LikeCount = b.Votes.Count,
+                    IsLikedByCurrentUser = currentUserId != null && b.Votes.Any(v => v.UserId == currentUserId),
+                    CategoryNames = b.Categories.Select(c => c.Name).ToList(),
+                    IsPublic = b.IsPublic,
+                    // Date User
+                    UserDisplayName = !string.IsNullOrEmpty(appUser?.FirstName) ? appUser.FirstName : (b.User?.UserName ?? "Unknown"),
+                    UserProfilePicture = appUser?.ProfilePicture,
+                    UserName = b.User?.UserName,
+                    CreatedAt = b.CreatedAt
+                };
+            }).ToList();
+
+            // 6. Returnăm lista paginată
+            var paginatedResult = new PaginatedList<BookmarkCardViewModel>(viewModelList, totalItems, pageIndex, pageSize);
+
+            return View(paginatedResult);
         }
 
         public IActionResult Privacy()

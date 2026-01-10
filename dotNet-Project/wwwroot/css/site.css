@@ -30,29 +30,7 @@ body {
     text-align: start;
 }
 
-/* --- STILURI GENERALE PROIECT --- */
-
-/* Imagini carduri */
-.card-img-custom {
-    height: 250px;
-    object-fit: cover;
-    width: 100%;
-}
-
-.card-img-placeholder {
-    height: 250px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* Badge-uri */
-.card-overlay-badges {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    opacity: 0.9;
-}
+/* --- UTILITARE GENERALE --- */
 
 .text-pre-wrap {
     white-space: pre-wrap;
@@ -73,37 +51,30 @@ body {
     border-radius: 0.25rem;
 }
 
-/* Cursor pointer generic */
 .cursor-pointer {
     cursor: pointer;
 }
 
-
 /* =========================================
-   ANIMATII SI INTERACTIUNI LIKE (NOU)
+   ANIMATII SI INTERACTIUNI LIKE
    ========================================= */
 
-/* 1. Containerul butonului de like */
 .like-container {
     transition: transform 0.1s ease-in-out;
-    display: inline-flex; /* Asigură alinierea corectă */
+    display: inline-flex;
     align-items: center;
 }
 
-    /* Când dai hover pe container, iconița crește fluent */
     .like-container:hover .like-icon {
-        transform: scale(1.2); /* Crește cu 20% */
-        color: #dc3545; /* Devine roșie la hover (opțional) */
+        transform: scale(1.2);
+        color: #dc3545;
     }
 
-/* 2. Iconița în sine - tranzitie lina */
 .like-icon {
-    /* Tranziție complexă pentru mișcări naturale */
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease-in-out;
     display: inline-block;
 }
 
-/* --- ANIMATIA DE LIKE (Bătaie de inimă) --- */
 @keyframes heartBeat {
     0% {
         transform: scale(1);
@@ -130,7 +101,6 @@ body {
     animation: heartBeat 0.6s ease-in-out;
 }
 
-/* --- ANIMATIA DE UNLIKE (Inimă Frântă) --- */
 @keyframes heartBreak {
     0% {
         transform: scale(1);
@@ -158,51 +128,175 @@ body {
 
     100% {
         transform: scale(0.8) translateY(5px);
-        opacity: 0; /* Dispare complet */
+        opacity: 0;
     }
 }
 
 .animate-break {
-    /* forwards păstrează starea finală (invizibil) până scoatem clasa cu JS */
     animation: heartBreak 0.7s ease-out forwards;
 }
 
-/* --- STILIZARE BARE DE CĂUTARE (Search Bars) --- */
+/* =========================================
+   COMPONENTA: POST CARD / BOOKMARK (Varianta 1 - Design Avansat)
+   ========================================= */
 
-/* 1. Stilizăm specific input-urile care au numele "searchString" */
-input[name="searchString"] {
-    border: 2px solid #6c757d !important; /* Margine gri închis, mai groasă (2px) */
-    font-weight: 600; /* Text îngroșat (Semi-Bold) */
-    color: #000; /* Text negru intens */
+.post-card {
+    position: relative;
+    border: none;
+    border-radius: var(--bs-card-border-radius);
+    overflow: hidden;
+    height: 400px; /* Înălțime fixă pentru grilă uniformă */
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-/* 2. Asigurăm că și butoanele atașate (lupa, x) au aceeași grosime */
+    .post-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,0.175) !important;
+        cursor: pointer;
+    }
+
+        .post-card:hover .card-title {
+            color: #0d6efd;
+        }
+
+/* Link Invizibil (Acoperă tot cardul) */
+.card-main-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    text-decoration: none;
+    opacity: 0;
+}
+
+/* Imagine Fundal */
+.post-img-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+}
+
+/* Placeholder Fundal */
+.post-placeholder-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 0;
+}
+
+/* Overlay Text (Gradient jos) */
+.post-content-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2;
+    pointer-events: none; /* Permite click-ul prin el */
+    background: linear-gradient(to top, #ffffff 15%, rgba(255,255,255,0.95) 45%, rgba(255,255,255,0) 100%);
+    padding: 4rem 1rem 1rem 1rem;
+}
+
+/* Badges Sus */
+.post-badges-top {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 5px;
+}
+
+/* Utilitare Z-Index */
+.bring-to-front {
+    position: relative;
+    z-index: 10;
+    pointer-events: auto;
+}
+
+.user-avatar-small {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 6px;
+    border: 1px solid #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* =========================================
+   STILURI SUPLIMENTARE (Varianta 2)
+   ========================================= */
+
+/* Imagini simple (pentru alte pagini) */
+.card-img-custom {
+    height: 250px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.card-img-placeholder {
+    height: 250px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.card-overlay-badges {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0.9;
+}
+
+/* =========================================
+   SEARCH BAR & OVERLAY (Varianta 2 - Esențial pentru Layout)
+   ========================================= */
+
+/* Input Căutare */
+input[name="searchString"] {
+    border: 2px solid #6c757d !important;
+    font-weight: 600;
+    color: #000;
+}
+
 .input-group .btn {
     border-width: 2px !important;
 }
 
-/* 3. Stilizare vizuală când dai click în căsuță (Focus) */
 input[name="searchString"]:focus {
-    border-color: #0d6efd !important; /* Marginea devine albastră */
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Umbră de focus */
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
-/* 4. Opțional: Placeholder-ul (textul "Caută...") să fie puțin mai vizibil */
 input[name="searchString"]::placeholder {
     color: #6c757d;
     font-weight: 500;
     opacity: 0.8;
 }
 
-/* --- SEARCH BAR MOBILE OVERLAY --- */
+/* Overlay Mobil */
 #mobile-search-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%; /* Acoperă tot header-ul */
+    height: 100%;
     background-color: white;
-    z-index: 1050; /* Peste tot restul meniului */
+    z-index: 1050;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -210,7 +304,6 @@ input[name="searchString"]::placeholder {
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* Ascundem overlay-ul by default */
 .d-none {
     display: none !important;
 }

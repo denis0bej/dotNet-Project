@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using dotNet_Project.Models;
+using System.IO; // Necesar pentru lucrul cu fisiere (Path, Directory, FileStream)
 
 namespace dotNet_Project.Controllers
 {
@@ -20,7 +21,6 @@ namespace dotNet_Project.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<BookmarksController> _logger;
-
         private readonly IWebHostEnvironment _env;
 
         public BookmarksController(ApplicationDbContext context,
@@ -34,11 +34,12 @@ namespace dotNet_Project.Controllers
             _env = env;
         }
 
-        // 1. LISTARE (Index) - CU SORTARE ȘI CĂUTARE
+        // 1. LISTARE (Index) - COMBINAT: Search/Sort (V2) + Admin Logic (V1)
         [HttpGet]
         public async Task<IActionResult> Index(string searchString, string sortOrder)
         {
             var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Admin");
 
             ViewData["CurrentFilter"] = searchString;
             ViewData["CurrentSort"] = sortOrder;
@@ -48,10 +49,15 @@ namespace dotNet_Project.Controllers
                                                             .Include(b => b.Tags)
                                                             .Include(b => b.Categories)
                                                             .Include(b => b.Votes)
-                                                            .Include(b => b.User)
-                                                            .Where(b => b.UserId == currentUserId);
+                                                            .Include(b => b.User);
 
-            // 2. LOGICA DE CĂUTARE AVANSATĂ
+            // LOGICA DIN VARIANTA 1 (Admin vede tot, User vede doar ale lui)
+            if (!isAdmin)
+            {
+                bookmarksQuery = bookmarksQuery.Where(b => b.UserId == currentUserId);
+            }
+
+            // 2. LOGICA DE CĂUTARE AVANSATĂ (DIN VARIANTA 2)
             if (!string.IsNullOrEmpty(searchString))
             {
                 // A. FILTRARE: Luăm tot ce se potrivește (Titlu OR Descriere OR Categorie)
@@ -61,13 +67,9 @@ namespace dotNet_Project.Controllers
                     b.Categories.Any(c => c.Name.Contains(searchString)));
 
                 // B. PRIORITIZARE (Ranking)
-                // Folosim o expresie condițională în OrderBy:
-                // Dacă Titlul conține textul, primește nota 0 (Prioritate Maximă).
-                // Altfel, primește nota 1 (Prioritate Mică - e doar în descriere/categorie).
                 bookmarksQuery = bookmarksQuery.OrderBy(b => b.Title.Contains(searchString) ? 0 : 1);
 
-                // C. SORTARE SECUNDARĂ (În funcție de preferința utilizatorului)
-                // Folosim "ThenBy" pentru a nu strica prioritatea stabilită mai sus
+                // C. SORTARE SECUNDARĂ
                 switch (sortOrder)
                 {
                     case "Popular":
@@ -82,7 +84,6 @@ namespace dotNet_Project.Controllers
             else
             {
                 // 3. SORTARE STANDARD (Fără căutare activă)
-                // Aici folosim OrderBy simplu pentru că nu avem prioritate de titlu
                 switch (sortOrder)
                 {
                     case "Popular":
@@ -99,21 +100,24 @@ namespace dotNet_Project.Controllers
             return View(bookmarks);
         }
 
-        // 2. CREARE (New) - Formularul
+        // 2. CREARE (New) - GET
         [HttpGet]
         [Authorize(Roles = "Admin,User")]
         public IActionResult New()
         {
             var currentUserId = _userManager.GetUserId(User);
             var userCategories = _context.Categories.Where(c => c.UserId == currentUserId);
+
             ViewBag.CategoryList = userCategories.Select(c => new SelectListItem
             {
                 Value = c.Id.ToString(),
                 Text = c.Name
             }).ToList();
+
             return View(new Bookmark());
         }
 
+        // 2. CREARE (New) - POST
         [HttpPost]
         [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
@@ -126,28 +130,21 @@ namespace dotNet_Project.Controllers
             // --- LOGICA UPLOAD IMAGINE ---
             if (bookmark.ImageUpload != null)
             {
-                // Definim calea: wwwroot/images/bookmarks
                 var storagePath = Path.Combine(_env.WebRootPath, "images", "bookmarks");
-
-                // Cream folderul daca nu exista
                 if (!Directory.Exists(storagePath)) Directory.CreateDirectory(storagePath);
 
-                // Generam nume unic
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(bookmark.ImageUpload.FileName);
                 var filePath = Path.Combine(storagePath, fileName);
 
-                // Salvam fisierul fizic
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await bookmark.ImageUpload.CopyToAsync(stream);
                 }
 
-                // Setam proprietatea MediaUrl cu calea relativa
                 bookmark.MediaUrl = "/images/bookmarks/" + fileName;
             }
-            // ------------------------------
 
-            // Logica categorii (ramane la fel)
+            // Logica categorii
             if (selectedCategories != null)
             {
                 foreach (var catId in selectedCategories)
@@ -157,11 +154,12 @@ namespace dotNet_Project.Controllers
                 }
             }
 
+            // Validare Model
             ModelState.Remove("UserId");
             ModelState.Remove("Categories");
             ModelState.Remove("User");
             ModelState.Remove("Tags");
-            ModelState.Remove("ImageUpload"); // Scoatem din validare ca nu e in DB
+            ModelState.Remove("ImageUpload");
 
             if (ModelState.IsValid)
             {
@@ -170,6 +168,7 @@ namespace dotNet_Project.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Reload ViewBag daca e eroare
             var userCategories = _context.Categories.Where(c => c.UserId == userId);
             ViewBag.CategoryList = userCategories.Select(c => new SelectListItem
             {
@@ -180,36 +179,46 @@ namespace dotNet_Project.Controllers
             return View(bookmark);
         }
 
+        // 3. EDITARE (Edit) - GET
         [HttpGet]
         [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
-            var bookmark = await _context.Bookmarks.Include(b => b.Tags).Include(b => b.Categories).FirstOrDefaultAsync(b => b.Id == id);
+
+            var bookmark = await _context.Bookmarks
+                                         .Include(b => b.Tags)
+                                         .Include(b => b.Categories)
+                                         .FirstOrDefaultAsync(b => b.Id == id);
+
             if (bookmark == null) return NotFound();
+
             var currentUserId = _userManager.GetUserId(User);
             if (bookmark.UserId != currentUserId) return RedirectToAction(nameof(Index));
 
             var allUserCategories = _context.Categories.Where(c => c.UserId == currentUserId);
             var selectedIds = bookmark.Categories.Select(c => c.Id).ToList();
+
             ViewBag.CategoryList = allUserCategories.Select(c => new SelectListItem
             {
                 Value = c.Id.ToString(),
                 Text = c.Name,
                 Selected = selectedIds.Contains(c.Id)
             }).ToList();
+
             return View(bookmark);
         }
 
+        // 3. EDITARE (Edit) - POST
         [HttpPost]
         [Authorize(Roles = "Admin,User")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Bookmark bookmark, int[] selectedCategories)
         {
             if (id != bookmark.Id) return NotFound();
+
             var currentUserId = _userManager.GetUserId(User);
 
-            // Incarcam bookmark-ul existent
             var existingBookmark = await _context.Bookmarks
                                                  .Include(b => b.Categories)
                                                  .FirstOrDefaultAsync(b => b.Id == id);
@@ -219,7 +228,6 @@ namespace dotNet_Project.Controllers
                 return Forbid();
             }
 
-            // Actualizam datele simple
             existingBookmark.Title = bookmark.Title;
             existingBookmark.Description = bookmark.Description;
             existingBookmark.IsPublic = bookmark.IsPublic;
@@ -227,7 +235,9 @@ namespace dotNet_Project.Controllers
             // --- LOGICA UPLOAD IMAGINE (Editare) ---
             if (bookmark.ImageUpload != null)
             {
-                // Daca userul incarca o poza noua, o procesam
+                // Stergem vechea imagine (Helper din Varianta 1)
+                DeleteLocalImage(existingBookmark.MediaUrl);
+
                 var storagePath = Path.Combine(_env.WebRootPath, "images", "bookmarks");
                 if (!Directory.Exists(storagePath)) Directory.CreateDirectory(storagePath);
 
@@ -239,18 +249,14 @@ namespace dotNet_Project.Controllers
                     await bookmark.ImageUpload.CopyToAsync(stream);
                 }
 
-                // Suprascriem vechiul URL cu noua imagine
                 existingBookmark.MediaUrl = "/images/bookmarks/" + fileName;
             }
             else if (!string.IsNullOrEmpty(bookmark.MediaUrl))
             {
-                // Daca NU a incarcat poza noua, dar a schimbat textul URL-ului (ex: link YouTube), il actualizam
-                // Atentie: Aici decidem prioritatea. De obicei, daca da upload, ignoram URL-ul text.
                 existingBookmark.MediaUrl = bookmark.MediaUrl;
             }
-            // ---------------------------------------
 
-            // Actualizare categorii (codul existent ramane la fel)
+            // Actualizare categorii
             existingBookmark.Categories.Clear();
             if (selectedCategories != null)
             {
@@ -274,67 +280,73 @@ namespace dotNet_Project.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // 4. STERGERE (Delete) - GET
         [HttpGet]
         [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
-            var bookmark = await _context.Bookmarks.Include(b => b.User).Include(b => b.Categories).FirstOrDefaultAsync(m => m.Id == id);
+
+            var bookmark = await _context.Bookmarks
+                                         .Include(b => b.User)
+                                         .Include(b => b.Categories)
+                                         .FirstOrDefaultAsync(m => m.Id == id);
+
             if (bookmark == null) return NotFound();
+
             var currentUserId = _userManager.GetUserId(User);
-            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin")) return Forbid();
+
+            if (bookmark.UserId != currentUserId && !User.IsInRole("Admin"))
+            {
+                return Forbid();
+            }
+
             return View(bookmark);
         }
 
-        // POST: Bookmarks/Delete/5
+        // 4. STERGERE (Delete) - POST
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var bookmark = await _context.Bookmarks.FindAsync(id);
 
-            if (bookmark == null)
-            {
-                return NotFound();
-            }
+            if (bookmark == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
 
-            // --- LOGICA DE SECURITATE PENTRU ADMIN ---
-            // Permitem ștergerea dacă:
-            // 1. Utilizatorul curent este proprietarul (UserId == currentUserId)
-            // SAU
-            // 2. Utilizatorul curent are rolul de "Admin" (!User.IsInRole("Admin"))
             if (bookmark.UserId != currentUserId && !User.IsInRole("Admin"))
             {
-                // Dacă nu e nici proprietar, nici Admin, îi interzicem accesul
                 return Forbid();
             }
-            // ----------------------------------------
+
+            // Stergere imagine locală (Helper din Varianta 1)
+            DeleteLocalImage(bookmark.MediaUrl);
 
             _context.Bookmarks.Remove(bookmark);
             await _context.SaveChangesAsync();
+            await DeleteOrphanTags();
 
-            // Ne întoarcem la pagina de unde am venit (de obicei Index)
             return RedirectToAction(nameof(Index));
         }
 
+        // 5. SHOW
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> Show(int? id)
         {
             if (id == null) return NotFound();
+
             var bookmark = await _context.Bookmarks
                                          .Include(b => b.Tags)
                                          .Include(b => b.User)
                                          .Include(b => b.Categories)
                                          .Include(b => b.Votes)
-                                         // Includem User-ul comentariului pentru a avea acces la ProfilePicture
                                          .Include(b => b.Comments).ThenInclude(c => c.User)
                                          .FirstOrDefaultAsync(m => m.Id == id);
+
             if (bookmark == null) return NotFound();
 
-            // --- LOGICA DE VIZIBILITATE (existenta) ---
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
 
@@ -353,19 +365,23 @@ namespace dotNet_Project.Controllers
                 var currentUser = await _userManager.FindByIdAsync(currentUserId);
                 ViewData["CurrentUserProfilePic"] = currentUser?.ProfilePicture;
             }
-            // ----------------------------
 
             return View(bookmark);
         }
 
+        // 6. SaveToCollection
         [Authorize(Roles = "Admin,User")]
         public async Task<IActionResult> SaveToCollection(int? id)
         {
             if (id == null) return NotFound();
             var bookmark = await _context.Bookmarks.FindAsync(id);
             if (bookmark == null) return NotFound();
+
             var currentUserId = _userManager.GetUserId(User);
-            var myCategories = _context.Categories.Where(c => c.UserId == currentUserId).Include(c => c.Bookmarks);
+            var myCategories = _context.Categories
+                                       .Where(c => c.UserId == currentUserId)
+                                       .Include(c => c.Bookmarks);
+
             var categoriesList = await myCategories.ToListAsync();
             ViewBag.CategoryList = categoriesList.Select(c => new SelectListItem
             {
@@ -373,6 +389,7 @@ namespace dotNet_Project.Controllers
                 Text = c.Name,
                 Selected = c.Bookmarks.Any(b => b.Id == bookmark.Id)
             }).ToList();
+
             return View(bookmark);
         }
 
@@ -383,10 +400,16 @@ namespace dotNet_Project.Controllers
         {
             var bookmark = await _context.Bookmarks.FindAsync(id);
             if (bookmark == null) return NotFound();
+
             var currentUserId = _userManager.GetUserId(User);
+
             if (selectedCategories != null)
             {
-                var myCategories = await _context.Categories.Include(c => c.Bookmarks).Where(c => c.UserId == currentUserId).ToListAsync();
+                var myCategories = await _context.Categories
+                                                 .Include(c => c.Bookmarks)
+                                                 .Where(c => c.UserId == currentUserId)
+                                                 .ToListAsync();
+
                 foreach (var category in myCategories)
                 {
                     if (selectedCategories.Contains(category.Id))
@@ -404,14 +427,17 @@ namespace dotNet_Project.Controllers
             return RedirectToAction("Index");
         }
 
+        // 7. ToggleLike
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> ToggleLike([FromBody] int id)
         {
             var bookmark = await _context.Bookmarks.FindAsync(id);
             if (bookmark == null) return NotFound();
+
             var currentUserId = _userManager.GetUserId(User);
             var existingVote = await _context.Votes.FirstOrDefaultAsync(v => v.BookmarkId == id && v.UserId == currentUserId);
+
             bool isLiked;
             if (existingVote != null)
             {
@@ -430,6 +456,30 @@ namespace dotNet_Project.Controllers
             return Json(new { success = true, newCount = bookmark.LikeCount, isLiked = isLiked });
         }
 
+        // 8. DeleteAjax (Specific Varianta 2)
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteAjax(int id)
+        {
+            var bookmark = await _context.Bookmarks.FindAsync(id);
+
+            if (bookmark == null)
+            {
+                return Json(new { success = false, message = "Postarea nu a fost găsită." });
+            }
+
+            // Stergem si poza locala daca exista (folosim helperul)
+            DeleteLocalImage(bookmark.MediaUrl);
+
+            _context.Bookmarks.Remove(bookmark);
+            await _context.SaveChangesAsync();
+
+            return Json(new { success = true, message = "Postarea a fost ștearsă cu succes!" });
+        }
+
+        // --- HELPERS ---
+
         private async Task DeleteOrphanTags()
         {
             var orphanTags = await _context.Tags.Where(t => !t.Bookmarks.Any()).ToListAsync();
@@ -445,24 +495,31 @@ namespace dotNet_Project.Controllers
             return _context.Bookmarks.Any(e => e.Id == id);
         }
 
-        // POST: Bookmarks/DeleteAjax/5
-        // Metodă specială pentru ștergerea din Feed fără reîncărcarea paginii
-        [HttpPost]
-        [Authorize(Roles = "Admin")] // Doar Adminul poate folosi asta din Feed
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteAjax(int id)
+        // Helper din Varianta 1 (ADĂUGAT AICI PENTRU A FI FOLOSIT ÎN EDIT/DELETE)
+        private void DeleteLocalImage(string relativePath)
         {
-            var bookmark = await _context.Bookmarks.FindAsync(id);
+            if (string.IsNullOrEmpty(relativePath)) return;
 
-            if (bookmark == null)
+            // Verificăm dacă e fișier local (începe cu /images/) și nu e link extern (YouTube)
+            if (relativePath.StartsWith("/images/"))
             {
-                return Json(new { success = false, message = "Postarea nu a fost găsită." });
+                // Construim calea absolută pe disc (ex: C:\Proiect\wwwroot\images\bookmarks\poza.jpg)
+                // TrimStart('/') scoate primul slash pentru a combina corect calea
+                var absolutePath = Path.Combine(_env.WebRootPath, relativePath.TrimStart('/'));
+
+                if (System.IO.File.Exists(absolutePath))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(absolutePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Putem loga eroarea, dar nu vrem să oprim execuția programului
+                        _logger.LogWarning("Nu s-a putut sterge fisierul: " + absolutePath + " Error: " + ex.Message);
+                    }
+                }
             }
-
-            _context.Bookmarks.Remove(bookmark);
-            await _context.SaveChangesAsync();
-
-            return Json(new { success = true, message = "Postarea a fost ștearsă cu succes!" });
         }
     }
 }

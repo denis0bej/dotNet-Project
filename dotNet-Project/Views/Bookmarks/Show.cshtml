@@ -5,7 +5,7 @@
     ViewData["Title"] = Model.Title;
     bool hasMedia = !string.IsNullOrEmpty(Model.MediaUrl);
 
-    // Preluăm ID-ul utilizatorului curent și rolul de Admin o singură dată
+    // 1. Preluăm datele utilizatorului curent o singură dată (Stil Varianta 2 - mai curat)
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     var isAdmin = User.IsInRole("Admin");
 }
@@ -185,10 +185,10 @@
                                                     @comment.User?.UserName
                                                 </a>
                                             </strong>
-
+                                            
                                             <div class="d-flex align-items-center">
                                                 <small class="text-muted me-2">@comment.CreatedAt.ToString("g")</small>
-
+                                                
                                                 @if (comment.UserId == currentUserId || isAdmin)
                                                 {
                                                     <form asp-controller="Comments" asp-action="Delete" asp-route-id="@comment.Id" method="post" class="d-inline"

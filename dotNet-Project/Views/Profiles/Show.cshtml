@@ -1,11 +1,17 @@
-﻿@model dotNet_Project.Models.UserProfileViewModel
+﻿@using dotNet_Project.Models
+@model dotNet_Project.Models.UserProfileViewModel
 
 @{
     ViewData["Title"] = Model.FullName + "'s Profile";
+    // Logică simplă pentru a menține tab-ul activ după paginare
+    var activeTab = ViewBag.ActiveTab as string ?? "collections";
+    var collectionsClass = activeTab == "collections" ? "active show" : "";
+    var bookmarksClass = activeTab == "bookmarks" ? "active show" : "";
+    var collectionsLinkClass = activeTab == "collections" ? "active" : "";
+    var bookmarksLinkClass = activeTab == "bookmarks" ? "active" : "";
 }
 
 <div class="container mt-5">
-
     <div class="card shadow-sm mb-4 border-0 bg-light">
         <div class="card-body p-4">
             <div class="row align-items-center">
@@ -19,12 +25,11 @@
                         <img src="https://placehold.co/180" alt="No Image" class="rounded-circle img-thumbnail shadow-sm" />
                     }
                 </div>
-
                 <div class="col-md-9">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
                             <h1 class="display-6 fw-bold text-dark">@Model.FullName</h1>
-                            <p class="text-muted mb-3">@Model.UserId</p>
+                            <p class="text-muted mb-3">@Model.Email</p>
                         </div>
                         @if (Model.IsOwner)
                         {
@@ -52,20 +57,20 @@
 
     <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold" id="collections-tab" data-bs-toggle="tab" data-bs-target="#collections" type="button" role="tab" aria-controls="collections" aria-selected="true">
-                <i class="bi bi-folder"></i> Collections (@Model.Categories.Count())
+            <button class="nav-link fw-bold @collectionsLinkClass" id="collections-tab" data-bs-toggle="tab" data-bs-target="#collections" type="button" role="tab">
+                <i class="bi bi-folder"></i> Collections
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="bookmarks-tab" data-bs-toggle="tab" data-bs-target="#bookmarks" type="button" role="tab" aria-controls="bookmarks" aria-selected="false">
-                <i class="bi bi-bookmark-heart"></i> Bookmarks (@Model.Bookmarks.Count())
+            <button class="nav-link fw-bold @bookmarksLinkClass" id="bookmarks-tab" data-bs-toggle="tab" data-bs-target="#bookmarks" type="button" role="tab">
+                <i class="bi bi-bookmark-heart"></i> Bookmarks
             </button>
         </li>
     </ul>
 
     <div class="tab-content" id="profileTabsContent">
 
-        <div class="tab-pane fade show active" id="collections" role="tabpanel" aria-labelledby="collections-tab">
+        <div class="tab-pane fade @collectionsClass" id="collections" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4 class="text-muted">My Collections</h4>
                 @if (Model.IsOwner)
@@ -76,9 +81,7 @@
 
             @if (!Model.Categories.Any())
             {
-                <div class="alert alert-info text-center">
-                    This user has no visible collections.
-                </div>
+                <div class="alert alert-info text-center">This user has no visible collections.</div>
             }
             else
             {
@@ -113,79 +116,170 @@
                         </div>
                     }
                 </div>
+
+                <div class="d-flex justify-content-center mt-3">
+                    @{
+                        var prevCatDisabled = !Model.Categories.HasPreviousPage ? "disabled" : "";
+                        var nextCatDisabled = !Model.Categories.HasNextPage ? "disabled" : "";
+                    }
+                    <a asp-action="Show"
+                       asp-route-id="@Model.UserId"
+                       asp-route-categoryPage="@(Model.Categories.PageIndex - 1)"
+                       asp-route-bookmarkPage="@Model.Bookmarks.PageIndex"
+                       class="btn btn-sm btn-outline-secondary me-2 @prevCatDisabled">
+                        &laquo; Previous
+                    </a>
+                    <span class="align-self-center mx-2 small text-muted">
+                        Page @Model.Categories.PageIndex of @Model.Categories.TotalPages
+                    </span>
+                    <a asp-action="Show"
+                       asp-route-id="@Model.UserId"
+                       asp-route-categoryPage="@(Model.Categories.PageIndex + 1)"
+                       asp-route-bookmarkPage="@Model.Bookmarks.PageIndex"
+                       class="btn btn-sm btn-outline-secondary @nextCatDisabled">
+                        Next &raquo;
+                    </a>
+                </div>
             }
         </div>
 
-        <div class="tab-pane fade" id="bookmarks" role="tabpanel" aria-labelledby="bookmarks-tab">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4 class="text-muted">My Bookmarks</h4>
+        <div class="tab-pane fade @bookmarksClass" id="bookmarks" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+                <h4 class="text-muted mb-0">My Bookmarks</h4>
                 @if (Model.IsOwner)
                 {
-                    <a asp-controller="Bookmarks" asp-action="New" class="btn btn-sm btn-primary">+ New Bookmark</a>
+                    <a asp-controller="Bookmarks" asp-action="New" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-plus-lg me-1"></i> New Bookmark
+                    </a>
                 }
             </div>
 
             @if (!Model.Bookmarks.Any())
             {
                 <div class="alert alert-light border text-center p-5">
-                    <p class="mb-0 text-muted">No bookmarks found here.</p>
+                    <p class="mb-0 text-muted">No bookmarks found.</p>
                 </div>
             }
             else
             {
                 <div class="row">
-                    @foreach (var bookmark in Model.Bookmarks)
+                    @foreach (var item in Model.Bookmarks)
                     {
+                        var heartClass = item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart";
+
                         <div class="col-md-4 mb-4">
-                            <div class="card h-100 shadow-sm">
-                                @if (!string.IsNullOrEmpty(bookmark.MediaUrl))
-                                {
-                                    <img src="@bookmark.MediaUrl" class="card-img-top" alt="Bookmark Image" style="height: 200px; object-fit: cover;">
-                                }
-                                else
-                                {
-                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                                        <i class="bi bi-image text-muted fs-1"></i>
-                                    </div>
-                                }
+                            <div class="card post-card">
 
-                                <div class="card-body">
-                                    <h5 class="card-title text-truncate">
-                                        <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@bookmark.Id" class="text-decoration-none text-dark">
-                                            @bookmark.Title
-                                        </a>
-                                    </h5>
-                                    <p class="card-text small text-muted text-truncate">
-                                        @(bookmark.Description ?? "No description provided.")
-                                    </p>
-
-                                    <div class="d-flex justify-content-between align-items-center mt-3">
-                                        <small class="text-muted">
-                                            <i class="bi bi-heart-fill text-danger"></i> @bookmark.LikeCount
-                                        </small>
-                                        <small class="text-muted">
-                                            @bookmark.CreatedAt.ToString("MMM dd, yyyy")
-                                        </small>
-                                    </div>
-                                </div>
+                                <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="card-main-link" aria-label="@item.Title"></a>
 
                                 @if (Model.IsOwner)
                                 {
-                                    <div class="card-footer bg-white">
-                                        <span class="badge @(bookmark.IsPublic ? "bg-success" : "bg-secondary") mb-2">
-                                            @(bookmark.IsPublic ? "Public" : "Private")
-                                        </span>
-                                        <div class="btn-group w-100">
-                                            <a asp-controller="Bookmarks" asp-action="Edit" asp-route-id="@bookmark.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                            <a asp-controller="Bookmarks" asp-action="Delete" asp-route-id="@bookmark.Id" class="btn btn-sm btn-outline-danger">Delete</a>
-                                        </div>
+                                    <div class="position-absolute top-0 start-0 p-3 bring-to-front d-flex gap-2">
+                                        <a asp-controller="Bookmarks" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-light btn-sm rounded-circle shadow-sm" title="Edit" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-pencil-fill text-dark small"></i>
+                                        </a>
+                                        <a asp-controller="Bookmarks" asp-action="Delete" asp-route-id="@item.Id" class="btn btn-light btn-sm rounded-circle shadow-sm" title="Delete" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-trash-fill text-danger small"></i>
+                                        </a>
                                     </div>
                                 }
+
+                                @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
+                                {
+                                    <img src="@item.MediaUrl" class="post-img-bg" alt="@item.Title">
+                                }
+                                else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
+                                {
+                                    <div class="post-placeholder-bg bg-black">
+                                        <i class="bi bi-youtube text-danger fs-1"></i>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="post-placeholder-bg">
+                                        <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
+                                    </div>
+                                }
+
+                                <div class="post-badges-top bring-to-front">
+                                    @foreach (var catName in item.CategoryNames)
+                                    {
+                                        <span class="badge bg-light text-dark shadow-sm opacity-75">
+                                            @catName
+                                        </span>
+                                    }
+                                </div>
+
+                                <div class="post-content-overlay">
+                                    <div class="d-flex justify-content-between align-items-center">
+
+                                        <div class="d-flex flex-column pe-3" style="min-width: 0;">
+                                            <h5 class="card-title fw-bold text-truncate w-100 mb-1">
+                                                @item.Title
+                                            </h5>
+
+                                            <div class="bring-to-front">
+                                                @if (item.IsPublic)
+                                                {
+                                                    <span class="badge bg-success bg-opacity-75 text-white shadow-sm d-inline-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-globe-americas"></i> Public
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary bg-opacity-75 text-white shadow-sm d-inline-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                                        <i class="bi bi-lock-fill"></i> Private
+                                                    </span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex align-items-center cursor-pointer like-container bring-to-front flex-shrink-0" onclick="toggleLike(@item.Id)">
+                                            <i id="heart-icon-@item.Id" class="bi @heartClass fs-3 me-1 like-icon"></i>
+                                            <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
+                                        </div>
+
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     }
+                </div>
+
+                <div class="d-flex justify-content-center mt-4">
+                    @{
+                        var prevBkDisabled = !Model.Bookmarks.HasPreviousPage ? "disabled" : "";
+                        var nextBkDisabled = !Model.Bookmarks.HasNextPage ? "disabled" : "";
+                    }
+                    <a asp-action="Show"
+                       asp-route-id="@Model.UserId"
+                       asp-route-bookmarkPage="@(Model.Bookmarks.PageIndex - 1)"
+                       asp-route-categoryPage="@Model.Categories.PageIndex"
+                       class="btn btn-outline-secondary me-2 @prevBkDisabled">
+                        <i class="bi bi-arrow-left"></i> Previous
+                    </a>
+
+                    <span class="align-self-center mx-3 fw-bold text-muted">
+                        Page @Model.Bookmarks.PageIndex of @Model.Bookmarks.TotalPages
+                    </span>
+
+                    <a asp-action="Show"
+                       asp-route-id="@Model.UserId"
+                       asp-route-bookmarkPage="@(Model.Bookmarks.PageIndex + 1)"
+                       asp-route-categoryPage="@Model.Categories.PageIndex"
+                       class="btn btn-outline-secondary @nextBkDisabled">
+                        Next <i class="bi bi-arrow-right"></i>
+                    </a>
                 </div>
             }
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        async function toggleLike(bookmarkId) {
+             /* ... Codul JS standard ... */
+        }
+    </script>
+}

@@ -1,157 +1,204 @@
 ﻿@using System.Security.Claims
-@model dotNet_Project.Models.Category
+@using dotNet_Project.Models
+@model dotNet_Project.Models.CategoryDetailsViewModel
 
 @{
     ViewData["Title"] = "Category: " + Model.Name;
     bool isOwner = (bool)ViewData["IsOwner"] as bool? ?? false;
-    bool isAdmin = (bool)ViewData["IsAdmin"] as bool? ?? false;
-
-    // Preluăm ID-ul userului curent pentru a verifica like-urile
-    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center">
+<div class="container mt-4 mb-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
         <div>
-            <h1 class="display-6">Category: <strong>@Model.Name</strong></h1>
-            <p class="text-muted">
-                Created by:
-                <a asp-controller="Profiles" asp-action="Show" asp-route-id="@Model.UserId" class="fw-bold text-decoration-none">
-                    @Model.User?.UserName
+            <h1 class="display-6 fw-bold mb-1">
+                <i class="bi bi-folder2-open text-warning me-2"></i> @Model.Name
+            </h1>
+            <p class="text-muted mb-0">
+                Collection created by
+                <a asp-controller="Profiles" asp-action="Show" asp-route-id="@Model.UserId" class="fw-bold text-decoration-none text-dark">
+                    @Model.UserDisplayName
                 </a>
 
                 @if (Model.IsPublic)
                 {
-                    <span class="badge bg-success ms-2">Public Folder</span>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success ms-2">Public Collection</span>
                 }
                 else
                 {
-                    <span class="badge bg-secondary ms-2">Private Folder</span>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary ms-2">Private Collection</span>
                 }
             </p>
         </div>
 
         @if (isOwner)
         {
-            <a asp-controller="Bookmarks" asp-action="New" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Add Bookmark
-            </a>
+            <div class="d-flex gap-2">
+                <a asp-controller="Categories" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">
+                    <i class="bi bi-gear"></i> Settings
+                </a>
+            </div>
         }
     </div>
 
-    <hr />
-
     @if (!Model.Bookmarks.Any())
     {
-        <div class="alert alert-warning text-center p-4">
-            <h4><i class="bi bi-folder2-open"></i></h4>
-            <p class="mb-0">This category is empty.</p>
+        <div class="text-center py-5">
+            <div class="mb-3">
+                <i class="bi bi-inbox display-1 text-muted opacity-25"></i>
+            </div>
+            <h4 class="text-muted">This collection is empty.</h4>
+            @if (isOwner)
+            {
+                <p class="mb-4">Start adding bookmarks to this category!</p>
+                <a asp-controller="Bookmarks" asp-action="New" class="btn btn-primary rounded-pill">Add Bookmark</a>
+            }
         </div>
     }
     else
     {
         <div class="row">
-            @foreach (var bookmark in Model.Bookmarks)
+            @foreach (var item in Model.Bookmarks)
             {
-                <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100 shadow-sm transition-hover">
+                var heartClass = item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart";
 
-                        <div class="bg-light text-center overflow-hidden position-relative" style="height: 200px;">
-                            @if (!string.IsNullOrEmpty(bookmark.MediaUrl) &&
-                                                (bookmark.MediaUrl.EndsWith(".jpg") || bookmark.MediaUrl.EndsWith(".png") || bookmark.MediaUrl.EndsWith(".jpeg") || bookmark.MediaUrl.EndsWith(".webp")))
+                <div class="col-md-4 mb-4">
+                    <div class="card post-card">
+
+                        <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="card-main-link" aria-label="@item.Title"></a>
+
+                        @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".jpeg")))
+                        {
+                            <img src="@item.MediaUrl" class="post-img-bg" alt="@item.Title">
+                        }
+                        else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
+                        {
+                            <div class="post-placeholder-bg bg-black">
+                                <i class="bi bi-youtube text-danger fs-1"></i>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="post-placeholder-bg">
+                                <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
+                            </div>
+                        }
+
+                        <div class="post-badges-top bring-to-front">
+                            @foreach (var catName in item.CategoryNames)
                             {
-                                <img src="@bookmark.MediaUrl" class="w-100 h-100" style="object-fit: cover;" alt="@bookmark.Title">
-                            }
-                            else if (!string.IsNullOrEmpty(bookmark.MediaUrl) && (bookmark.MediaUrl.Contains("youtube.com") || bookmark.MediaUrl.Contains("youtu.be")))
-                            {
-                                <div class="d-flex align-items-center justify-content-center h-100 text-danger">
-                                    <i class="bi bi-youtube" style="font-size: 4rem;"></i>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">
-                                    <i class="bi bi-link-45deg" style="font-size: 4rem;"></i>
-                                </div>
+                                <span class="badge bg-light text-dark shadow-sm opacity-75">
+                                    @catName
+                                </span>
                             }
                         </div>
 
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title w-75">
-                                    <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@bookmark.Id" class="text-decoration-none text-dark fw-bold">
-                                        @bookmark.Title
-                                    </a>
-                                </h5>
+                        <div class="post-content-overlay">
 
-                                @{
-                                    // Calculăm starea like-ului pentru fiecare bookmark
-                                    var isLikedByMe = bookmark.Votes.Any(v => v.UserId == currentUserId);
-                                    var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
-                                }
+                            <div class="d-flex justify-content-between align-items-center">
 
-                                @if (currentUserId != null)
-                                {
-                                    <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@bookmark.Id)">
-                                        <i id="heart-icon-@bookmark.Id" class="bi @heartClass fs-5 me-1 like-icon"></i>
-                                        <span id="like-count-@bookmark.Id" class="fw-bold small">@bookmark.LikeCount</span>
+                                <div class="d-flex flex-column pe-3" style="min-width: 0;">
+
+                                    <h5 class="card-title fw-bold text-truncate w-100 mb-1">
+                                        @item.Title
+                                    </h5>
+
+                                    <div class="d-flex align-items-center bring-to-front position-relative">
+                                        @if (!string.IsNullOrEmpty(item.UserProfilePicture))
+                                        {
+                                            <img src="@item.UserProfilePicture" class="user-avatar-small" alt="User">
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-person-circle me-1 text-muted fs-5"></i>
+                                        }
+
+                                        <span class="card-subtitle text-muted small mb-0 fw-semibold text-truncate">
+                                            @item.UserDisplayName
+                                        </span>
                                     </div>
-                                }
-                                else
-                                {
-                                    <div class="d-flex align-items-center text-muted">
-                                        <i class="bi bi-heart fs-5 me-1"></i>
-                                        <span class="fw-bold small">@bookmark.LikeCount</span>
-                                    </div>
-                                }
-                            </div>
-
-                            <p class="card-text text-muted small">
-                                @if (bookmark.Description?.Length > 100)
-                                {
-                                    @bookmark.Description.Substring(0, 80)
-                        
-                                    <text>...</text>
-                                }
-                                else
-                                {
-                                    @bookmark.Description
-                                }
-                            </p>
-
-                            <div class="d-flex justify-content-between align-items-center mt-3 border-top pt-2">
-                                <small class="text-muted">
-                                    <i class="bi bi-calendar3"></i> @bookmark.CreatedAt.ToString("dd MMM")
-                                </small>
-
-                                <div>
-                                    <small class="text-muted me-2"><i class="bi bi-heart-fill text-danger"></i> @bookmark.LikeCount</small>
-
-                                    @if (!bookmark.IsPublic)
-                                    {
-                                        <i class="bi bi-lock-fill text-secondary" title="Private"></i>
-                                    }
                                 </div>
+
+                                <div class="d-flex align-items-center cursor-pointer like-container bring-to-front flex-shrink-0" onclick="toggleLike(@item.Id)">
+                                    <i id="heart-icon-@item.Id" class="bi @heartClass fs-3 me-1 like-icon"></i>
+                                    <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
+                                </div>
+
                             </div>
                         </div>
                     </div>
                 </div>
             }
         </div>
+
+        <div class="d-flex justify-content-center mt-4 mb-5">
+            @{
+                var prevDisabled = !Model.Bookmarks.HasPreviousPage ? "disabled" : "";
+                var nextDisabled = !Model.Bookmarks.HasNextPage ? "disabled" : "";
+            }
+
+            <a asp-action="Show"
+               asp-route-id="@Model.Id"
+               asp-route-pageNumber="@(Model.Bookmarks.PageIndex - 1)"
+               class="btn btn-outline-secondary me-2 @prevDisabled">
+                <i class="bi bi-arrow-left"></i> Previous
+            </a>
+
+            <span class="align-self-center mx-3 fw-bold text-muted">
+                Page @Model.Bookmarks.PageIndex of @Model.Bookmarks.TotalPages
+            </span>
+
+            <a asp-action="Show"
+               asp-route-id="@Model.Id"
+               asp-route-pageNumber="@(Model.Bookmarks.PageIndex + 1)"
+               class="btn btn-outline-secondary @nextDisabled">
+                Next <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
     }
 
-    <div class="mt-4">
-        @if (isOwner)
-        {
-            <a asp-controller="Profiles" asp-action="Show" class="btn btn-outline-secondary">
-                &larr; Back to My Profile
-            </a>
-        }
-        else
-        {
-            <a asp-controller="Profiles" asp-action="Show" asp-route-id="@Model.UserId" class="btn btn-outline-secondary">
-                &larr; Back to @(Model.User?.UserName)'s Profile
-            </a>
-        }
+    <div class="mt-3 border-top pt-3">
+        <a asp-controller="Profiles" asp-action="Show" asp-route-id="@Model.UserId" class="btn btn-link text-decoration-none text-muted ps-0">
+            &larr; Back to @Model.UserDisplayName's Profile
+        </a>
     </div>
+
 </div>
+
+@section Scripts {
+    <script>
+        async function toggleLike(bookmarkId) {
+             try {
+                 const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
+                 const countSpan = document.getElementById(`like-count-${bookmarkId}`);
+                 const token = document.getElementsByName('__RequestVerificationToken')[0]?.value;
+
+                 const response = await fetch('/Bookmarks/ToggleLike', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'RequestVerificationToken': token
+                     },
+                     body: JSON.stringify(bookmarkId)
+                 });
+
+                 if (response.ok) {
+                     const data = await response.json();
+                     countSpan.innerText = data.newCount;
+
+                     if (data.isLiked) {
+                         heartIcon.classList.remove('bi-heart');
+                         heartIcon.classList.add('bi-heart-fill', 'text-danger');
+                         heartIcon.classList.add('animate-like');
+                         setTimeout(() => { heartIcon.classList.remove('animate-like'); }, 400);
+                     } else {
+                         heartIcon.classList.add('bi-heart');
+                         heartIcon.classList.remove('bi-heart-fill', 'text-danger');
+                     }
+                 }
+             } catch (error) {
+                 console.error("Network error:", error);
+             }
+         }
+    </script>
+}
