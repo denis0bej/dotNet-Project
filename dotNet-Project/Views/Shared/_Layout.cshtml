@@ -27,13 +27,11 @@
                                 <i class="bi bi-house-door"></i> Feed Public
                             </a>
                         </li>
-
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Bookmarks" asp-action="Index">
                                 <i class="bi bi-bookmark-check"></i> Bookmark-urile Mele
                             </a>
                         </li>
-
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Categories" asp-action="Index">
                                 <i class="bi bi-tags"></i> Categorii
@@ -43,6 +41,30 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Categories" asp-action="Profile">My Profile</a>
                         </li>
                     </ul>
+
+                    @{
+                        // Aflăm pe ce controller suntem
+                        var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+
+                        // Afișăm textul căutat DOAR dacă suntem pe Home.
+                        // Altfel, lăsăm bara goală (pentru ca search-ul local din Bookmarks să nu o polueze).
+                        var globalSearchValue = (currentController == "Home") ? ViewData["CurrentFilter"] : "";
+                    }
+
+                    <form class="d-flex mx-3" asp-controller="Home" asp-action="Index" method="get">
+                        <div class="input-group">
+                            <input class="form-control rounded-pill-start" type="search"
+                                   name="searchString"
+                                   placeholder="Caută idei..."
+                                   aria-label="Search"
+                                   value="@globalSearchValue">
+
+                            <button class="btn btn-outline-secondary rounded-pill-end border-start-0" type="submit">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+
                     <ul class="navbar-nav">
                         <partial name="_LoginPartial" />
                     </ul>

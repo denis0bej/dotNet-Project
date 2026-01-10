@@ -9,14 +9,29 @@
 @Html.AntiForgeryToken()
 
 <div class="container mt-4 mb-4 text-center">
-    <h1 class="display-5 mb-3">Descoperă Idei Noi</h1>
+
+    @if (ViewData["CurrentFilter"] != null)
+    {
+        <h1 class="display-6 mb-3">Rezultate pentru: <span class="text-primary">"@ViewData["CurrentFilter"]"</span></h1>
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary mb-3">
+            <i class="bi bi-x-circle"></i> Resetează Filtrele
+        </a>
+    }
+    else
+    {
+        <h1 class="display-5 mb-3">Descoperă Idei Noi</h1>
+    }
 
     <div class="btn-group" role="group">
-        <a asp-action="Index" asp-route-sortOrder="Recent"
+        <a asp-action="Index"
+           asp-route-sortOrder="Recent"
+           asp-route-searchString="@ViewData["CurrentFilter"]"
            class="btn @(ViewBag.CurrentSort != "Popular" ? "btn-dark" : "btn-outline-dark")">
             <i class="bi bi-clock"></i> Cele mai Recente
         </a>
-        <a asp-action="Index" asp-route-sortOrder="Popular"
+        <a asp-action="Index"
+           asp-route-sortOrder="Popular"
+           asp-route-searchString="@ViewData["CurrentFilter"]"
            class="btn @(ViewBag.CurrentSort == "Popular" ? "btn-danger" : "btn-outline-danger")">
             <i class="bi bi-fire"></i> Cele mai Populare
         </a>
@@ -26,14 +41,27 @@
 <div class="container">
     @if (!Model.Any())
     {
-        <div class="alert alert-warning text-center">
-            Nu există bookmark-uri publice momentan. Fii tu primul care postează într-o categorie publică!
-        </div>
+        @if (ViewData["CurrentFilter"] != null)
+        {
+            <div class="alert alert-light text-center p-5 border shadow-sm">
+                <i class="bi bi-search display-1 text-muted mb-3 d-block"></i>
+                <h4 class="text-danger">Nu am găsit nimic pentru "@ViewData["CurrentFilter"]"</h4>
+                <p class="text-muted">Încearcă alte cuvinte cheie sau verifică ortografia.</p>
+                <a asp-action="Index" class="btn btn-primary mt-3">Înapoi la toate Pin-urile</a>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning text-center">
+                Nu există bookmark-uri publice momentan. Fii tu primul care postează într-o categorie publică!
+            </div>
+        }
     }
 
     <div class="row">
         @foreach (var item in Model)
         {
+            // Calculăm starea de Like
             var isLikedByMe = item.Votes.Any(v => v.UserId == currentUserId);
             var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
 
@@ -78,9 +106,7 @@
                             @if (currentUserId != null)
                             {
                                 <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@item.Id)">
-
                                     <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1 like-icon"></i>
-
                                     <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
                                 </div>
                             }

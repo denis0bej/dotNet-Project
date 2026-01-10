@@ -68,3 +68,20 @@ async function toggleLike(bookmarkId) {
         console.error("Eroare la procesarea like-ului:", error);
     }
 }
+
+function toggleMobileSearch() {
+    const overlay = document.getElementById('mobile-search-overlay');
+    const input = document.getElementById('mobile-search-input');
+
+    if (overlay.classList.contains('d-none')) {
+        // Deschidem
+        overlay.classList.remove('d-none');
+        overlay.classList.add('d-flex');
+        // Punem focus automat pe scris
+        if (input) setTimeout(() => input.focus(), 100);
+    } else {
+        // Închidem
+        overlay.classList.remove('d-flex');
+        overlay.classList.add('d-none');
+    }
+}

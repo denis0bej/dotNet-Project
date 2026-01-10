@@ -22,20 +22,32 @@ namespace dotNet_Project.Controllers
         }
 
         // Metoda Index primește un parametru opțional "sortOrder"
-        public async Task<IActionResult> Index(string sortOrder)
+        // Parametrul 'searchString' vine din input-ul formularului pe care il vom face
+        public async Task<IActionResult> Index(string sortOrder, string searchString)
         {
-            ViewBag.CurrentSort = sortOrder;
+            // Salvăm parametrii în ViewData pentru a-i păstra în View (ex: să rămână textul în căsuța de search)
+            ViewData["CurrentSort"] = sortOrder;
+            ViewData["CurrentFilter"] = searchString;
 
-            // 1. Construim interogarea
+            // 1. Construim interogarea de bază
             var bookmarksQuery = _context.Bookmarks
-                                         .Include(b => b.Categories) // <--- FOLOSIM LISTA (M-M)
+                                         .Include(b => b.Categories)
                                          .Include(b => b.User)
                                          .Include(b => b.Votes)
-                                         .Where(b => b.IsPublic) // Afișăm doar bookmark-urile publice
+                                         .Where(b => b.IsPublic) // Doar cele publice
                                          .AsQueryable();
 
+            // 2. Aplicăm FILTRAREA (Căutarea)
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                // Căutăm parțial (Contains) în Titlu, Descriere SAU în Numele Categoriilor
+                bookmarksQuery = bookmarksQuery.Where(b =>
+                    b.Title.Contains(searchString) ||
+                    b.Description.Contains(searchString) ||
+                    b.Categories.Any(c => c.Name.Contains(searchString)));
+            }
 
-            // 3. Aplicăm Sortarea
+            // 3. Aplicăm SORTAREA
             switch (sortOrder)
             {
                 case "Popular":

@@ -2,24 +2,67 @@
 @model IEnumerable<dotNet_Project.Models.Bookmark>
 
 @{
-    ViewData["Title"] = "My Bookmarks";
+    ViewData["Title"] = "My Personal Collection";
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>My Collection & Public Bookmarks</h1>
-        <a asp-action="New" class="btn btn-success">
-            <i class="bi bi-plus-lg"></i> New Bookmark
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-folder2-open text-primary"></i> Colecția Mea</h2>
+            <p class="text-muted small mb-0">Gestionează bookmark-urile tale private și publice</p>
+        </div>
+        <a asp-action="New" class="btn btn-success shadow-sm">
+            <i class="bi bi-plus-lg"></i> Adaugă Bookmark
         </a>
+    </div>
+
+    <div class="row mb-4 justify-content-center">
+        <div class="col-md-6">
+            <form asp-controller="Bookmarks" asp-action="Index" method="get">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text"
+                           name="searchString"
+                           class="form-control border-start-0 border-end-0"
+                           placeholder="Caută în colecția ta (ex: copac, privat)..."
+                           value="@ViewData["CurrentFilter"]">
+
+                    @if (ViewData["CurrentFilter"] != null)
+                    {
+                        <a asp-action="Index" class="btn btn-outline-secondary border-start-0 border-end-0" title="Șterge filtrele">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    }
+
+                    <button type="submit" class="btn btn-primary">Caută</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     @if (!Model.Any())
     {
-        <div class="alert alert-info text-center">
-            You haven't saved any bookmarks yet.
-            <a asp-action="New">Create one now!</a>
-        </div>
+        @if (ViewData["CurrentFilter"] != null)
+        {
+            <div class="text-center py-5">
+                <i class="bi bi-search display-4 text-muted mb-3 d-block"></i>
+                <h4 class="text-danger">Nu am găsit nimic pentru "@ViewData["CurrentFilter"]"</h4>
+                <p class="text-muted">Verifică dacă ai scris corect sau dacă postarea există în colecția ta.</p>
+                <a asp-action="Index" class="btn btn-outline-secondary mt-2">Vezi toate bookmark-urile mele</a>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 bg-light rounded border border-dashed">
+                <i class="bi bi-bookmark-plus display-4 text-secondary mb-3"></i>
+                <h4>Încă nu ai niciun bookmark!</h4>
+                <p class="text-muted">Începe prin a salva ideile tale preferate.</p>
+                <a asp-action="New" class="btn btn-primary mt-2">Creează primul Bookmark</a>
+            </div>
+        }
     }
     else
     {
@@ -52,9 +95,7 @@
                                 {
                                     @foreach (var cat in item.Categories)
                                     {
-                                        <span class="badge bg-light text-dark shadow-sm me-1">
-                                            @cat.Name
-                                        </span>
+                                        <span class="badge bg-light text-dark shadow-sm me-1">@cat.Name</span>
                                     }
                                 }
                             </div>
@@ -68,53 +109,37 @@
                                     </a>
                                 </h5>
 
-                                @{
-                                    var isLikedByMe = item.Votes.Any(v => v.UserId == currentUserId);
-                                    var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
-                                }
-
-                                @if (currentUserId != null)
+                                @if (!item.IsPublic)
                                 {
-                                    <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@item.Id)">
-                                        <i id="heart-icon-@item.Id" class="bi @heartClass fs-4 me-1 like-icon"></i>
-                                        <span id="like-count-@item.Id" class="fw-bold">@item.LikeCount</span>
-                                    </div>
+                                    <span class="text-danger" title="Privat"><i class="bi bi-lock-fill"></i></span>
                                 }
                                 else
                                 {
-                                    <div class="d-flex align-items-center text-muted">
-                                        <i class="bi bi-heart fs-4 me-1"></i>
-                                        <span class="fw-bold">@item.LikeCount</span>
-                                    </div>
+                                    <span class="text-success" title="Public"><i class="bi bi-globe"></i></span>
                                 }
                             </div>
 
-                            <p class="card-subtitle text-muted mb-2 small">
-                                <i class="bi bi-person-circle"></i> @(item.User?.UserName ?? "Unknown")
-                            </p>
+                            @{
+                                var isLikedByMe = item.Votes.Any(v => v.UserId == currentUserId);
+                                var heartClass = isLikedByMe ? "bi-heart-fill text-danger" : "bi-heart";
+                            }
+                            <div class="d-flex align-items-center mb-2 cursor-pointer like-container" onclick="toggleLike(@item.Id)">
+                                <i id="heart-icon-@item.Id" class="bi @heartClass text-danger me-1 like-icon"></i>
+                                <span id="like-count-@item.Id" class="text-muted small">@item.LikeCount</span>
+                            </div>
 
-                            <p class="card-text text-truncate text-muted">
-                                @if (!string.IsNullOrEmpty(item.Description) && item.Description.Length > 80)
-                                {
-                                    @item.Description.Substring(0, 80) <text>...</text>
-                                }
-                                else
-                                {
-                                    @item.Description
-                                }
+                            <p class="card-text text-truncate text-muted small">
+                                @item.Description
                             </p>
                         </div>
 
                         <div class="card-footer bg-white border-top-0 d-flex justify-content-between">
-                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm rounded-pill">Details</a>
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary rounded-pill px-3">Vezi</a>
 
-                            @if (item.UserId == currentUserId || User.IsInRole("Admin"))
-                            {
-                                <div>
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-warning btn-sm rounded-circle"><i class="bi bi-pencil"></i></a>
-                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm rounded-circle"><i class="bi bi-trash"></i></a>
-                                </div>
-                            }
+                            <div>
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning rounded-circle" title="Editează"><i class="bi bi-pencil"></i></a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger rounded-circle" title="Șterge"><i class="bi bi-trash"></i></a>
+                            </div>
                         </div>
                     </div>
                 </div>

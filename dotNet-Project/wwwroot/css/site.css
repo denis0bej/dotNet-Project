@@ -166,3 +166,51 @@ body {
     /* forwards păstrează starea finală (invizibil) până scoatem clasa cu JS */
     animation: heartBreak 0.7s ease-out forwards;
 }
+
+/* --- STILIZARE BARE DE CĂUTARE (Search Bars) --- */
+
+/* 1. Stilizăm specific input-urile care au numele "searchString" */
+input[name="searchString"] {
+    border: 2px solid #6c757d !important; /* Margine gri închis, mai groasă (2px) */
+    font-weight: 600; /* Text îngroșat (Semi-Bold) */
+    color: #000; /* Text negru intens */
+}
+
+/* 2. Asigurăm că și butoanele atașate (lupa, x) au aceeași grosime */
+.input-group .btn {
+    border-width: 2px !important;
+}
+
+/* 3. Stilizare vizuală când dai click în căsuță (Focus) */
+input[name="searchString"]:focus {
+    border-color: #0d6efd !important; /* Marginea devine albastră */
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Umbră de focus */
+}
+
+/* 4. Opțional: Placeholder-ul (textul "Caută...") să fie puțin mai vizibil */
+input[name="searchString"]::placeholder {
+    color: #6c757d;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+/* --- SEARCH BAR MOBILE OVERLAY --- */
+#mobile-search-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%; /* Acoperă tot header-ul */
+    background-color: white;
+    z-index: 1050; /* Peste tot restul meniului */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Ascundem overlay-ul by default */
+.d-none {
+    display: none !important;
+}
