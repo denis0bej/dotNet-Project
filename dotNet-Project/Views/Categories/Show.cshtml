@@ -3,8 +3,8 @@
 
 @{
     ViewData["Title"] = "Category: " + Model.Name;
-    bool isOwner = (bool)ViewData["IsOwner"];
-    bool isAdmin = (bool)ViewData["IsAdmin"];
+    bool isOwner = (bool)ViewData["IsOwner"] as bool? ?? false;
+    bool isAdmin = (bool)ViewData["IsAdmin"] as bool? ?? false;
 
     // Preluăm ID-ul userului curent pentru a verifica like-urile
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -15,7 +15,10 @@
         <div>
             <h1 class="display-6">Category: <strong>@Model.Name</strong></h1>
             <p class="text-muted">
-                Created by: <a asp-controller="Categories" asp-action="Profile" asp-route-userId="@Model.UserId">@Model.User?.UserName</a>
+                Created by:
+                <a asp-controller="Profiles" asp-action="Show" asp-route-id="@Model.UserId" class="fw-bold text-decoration-none">
+                    @Model.User?.UserName
+                </a>
 
                 @if (Model.IsPublic)
                 {
@@ -31,7 +34,7 @@
         @if (isOwner)
         {
             <a asp-controller="Bookmarks" asp-action="New" class="btn btn-primary">
-                + Add Bookmark Here
+                <i class="bi bi-plus-circle"></i> Add Bookmark
             </a>
         }
     </div>
@@ -40,8 +43,9 @@
 
     @if (!Model.Bookmarks.Any())
     {
-        <div class="alert alert-warning">
-            This category is empty.
+        <div class="alert alert-warning text-center p-4">
+            <h4><i class="bi bi-folder2-open"></i></h4>
+            <p class="mb-0">This category is empty.</p>
         </div>
     }
     else
@@ -50,22 +54,32 @@
             @foreach (var bookmark in Model.Bookmarks)
             {
                 <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100 shadow-sm border-0">
-                        @if (!string.IsNullOrEmpty(bookmark.MediaUrl))
-                        {
-                            <img src="@bookmark.MediaUrl" class="card-img-top card-img-custom" alt="Bookmark Image">
-                        }
-                        else
-                        {
-                            <div class="card-img-top bg-light card-img-placeholder">
-                                <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
-                            </div>
-                        }
+                    <div class="card h-100 shadow-sm transition-hover">
+
+                        <div class="bg-light text-center overflow-hidden position-relative" style="height: 200px;">
+                            @if (!string.IsNullOrEmpty(bookmark.MediaUrl) &&
+                                                (bookmark.MediaUrl.EndsWith(".jpg") || bookmark.MediaUrl.EndsWith(".png") || bookmark.MediaUrl.EndsWith(".jpeg") || bookmark.MediaUrl.EndsWith(".webp")))
+                            {
+                                <img src="@bookmark.MediaUrl" class="w-100 h-100" style="object-fit: cover;" alt="@bookmark.Title">
+                            }
+                            else if (!string.IsNullOrEmpty(bookmark.MediaUrl) && (bookmark.MediaUrl.Contains("youtube.com") || bookmark.MediaUrl.Contains("youtu.be")))
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100 text-danger">
+                                    <i class="bi bi-youtube" style="font-size: 4rem;"></i>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                                    <i class="bi bi-link-45deg" style="font-size: 4rem;"></i>
+                                </div>
+                            }
+                        </div>
 
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h5 class="card-title w-75">
-                                    <a asp-controller="Bookmarks" asp-action="Details" asp-route-id="@bookmark.Id" class="text-decoration-none text-dark fw-bold">
+                                    <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@bookmark.Id" class="text-decoration-none text-dark fw-bold">
                                         @bookmark.Title
                                     </a>
                                 </h5>
@@ -95,7 +109,9 @@
                             <p class="card-text text-muted small">
                                 @if (bookmark.Description?.Length > 100)
                                 {
-                                    @bookmark.Description.Substring(0, 100) <text>...</text>
+                                    @bookmark.Description.Substring(0, 80)
+                        
+                                    <text>...</text>
                                 }
                                 else
                                 {
@@ -103,13 +119,19 @@
                                 }
                             </p>
 
-                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                <small class="text-muted">@bookmark.CreatedAt.ToString("dd MMM yyyy")</small>
+                            <div class="d-flex justify-content-between align-items-center mt-3 border-top pt-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar3"></i> @bookmark.CreatedAt.ToString("dd MMM")
+                                </small>
 
-                                @if (!bookmark.IsPublic)
-                                {
-                                    <span class="badge bg-secondary">Private Item</span>
-                                }
+                                <div>
+                                    <small class="text-muted me-2"><i class="bi bi-heart-fill text-danger"></i> @bookmark.LikeCount</small>
+
+                                    @if (!bookmark.IsPublic)
+                                    {
+                                        <i class="bi bi-lock-fill text-secondary" title="Private"></i>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -118,7 +140,18 @@
         </div>
     }
 
-    <div class="mt-3">
-        <a asp-action="Index" class="btn btn-outline-secondary">Back to Categories</a>
+    <div class="mt-4">
+        @if (isOwner)
+        {
+            <a asp-controller="Profiles" asp-action="Show" class="btn btn-outline-secondary">
+                &larr; Back to My Profile
+            </a>
+        }
+        else
+        {
+            <a asp-controller="Profiles" asp-action="Show" asp-route-id="@Model.UserId" class="btn btn-outline-secondary">
+                &larr; Back to @(Model.User?.UserName)'s Profile
+            </a>
+        }
     </div>
 </div>

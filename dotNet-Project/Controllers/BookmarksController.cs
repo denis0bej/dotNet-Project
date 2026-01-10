@@ -3,6 +3,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using dotNet_Project.Data;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,11 +21,17 @@ namespace dotNet_Project.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<BookmarksController> _logger;
 
-        public BookmarksController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ILogger<BookmarksController> logger)
+        private readonly IWebHostEnvironment _env;
+
+        public BookmarksController(ApplicationDbContext context,
+                               UserManager<ApplicationUser> userManager,
+                               ILogger<BookmarksController> logger,
+                               IWebHostEnvironment env)
         {
             _context = context;
             _userManager = userManager;
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger = logger;
+            _env = env;
         }
 
         // 1. LISTARE (Index) - DOAR COLECȚIA MEA (Private + Publice)
@@ -50,6 +57,12 @@ namespace dotNet_Project.Controllers
                     b.Title.Contains(searchString) ||
                     (b.Description != null && b.Description.Contains(searchString)) ||
                     b.Categories.Any(c => c.Name.Contains(searchString)));
+            }
+            else
+            {
+                // MODIFICARE AICI: Stergem "|| b.IsPublic == true"
+                // Acum userul vede DOAR bookmark-urile create de el
+                bookmarksQuery = bookmarksQuery.Where(b => b.UserId == currentUserId);
             }
 
             // 3. Ordonare: Cele mai noi sus
@@ -82,6 +95,31 @@ namespace dotNet_Project.Controllers
             bookmark.UserId = userId;
             bookmark.CreatedAt = DateTime.Now;
 
+            // --- LOGICA UPLOAD IMAGINE ---
+            if (bookmark.ImageUpload != null)
+            {
+                // Definim calea: wwwroot/images/bookmarks
+                var storagePath = Path.Combine(_env.WebRootPath, "images", "bookmarks");
+
+                // Cream folderul daca nu exista
+                if (!Directory.Exists(storagePath)) Directory.CreateDirectory(storagePath);
+
+                // Generam nume unic
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(bookmark.ImageUpload.FileName);
+                var filePath = Path.Combine(storagePath, fileName);
+
+                // Salvam fisierul fizic
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await bookmark.ImageUpload.CopyToAsync(stream);
+                }
+
+                // Setam proprietatea MediaUrl cu calea relativa
+                bookmark.MediaUrl = "/images/bookmarks/" + fileName;
+            }
+            // ------------------------------
+
+            // Logica categorii (ramane la fel)
             if (selectedCategories != null)
             {
                 foreach (var catId in selectedCategories)
@@ -95,6 +133,7 @@ namespace dotNet_Project.Controllers
             ModelState.Remove("Categories");
             ModelState.Remove("User");
             ModelState.Remove("Tags");
+            ModelState.Remove("ImageUpload"); // Scoatem din validare ca nu e in DB
 
             if (ModelState.IsValid)
             {
@@ -141,15 +180,50 @@ namespace dotNet_Project.Controllers
         {
             if (id != bookmark.Id) return NotFound();
             var currentUserId = _userManager.GetUserId(User);
-            var existingBookmark = await _context.Bookmarks.Include(b => b.Tags).Include(b => b.Categories).FirstOrDefaultAsync(b => b.Id == id);
-            if (existingBookmark == null || existingBookmark.UserId != currentUserId) return Forbid();
 
+            // Incarcam bookmark-ul existent
+            var existingBookmark = await _context.Bookmarks
+                                                 .Include(b => b.Categories)
+                                                 .FirstOrDefaultAsync(b => b.Id == id);
+
+            if (existingBookmark == null || existingBookmark.UserId != currentUserId)
+            {
+                return Forbid();
+            }
+
+            // Actualizam datele simple
             existingBookmark.Title = bookmark.Title;
             existingBookmark.Description = bookmark.Description;
-            existingBookmark.MediaUrl = bookmark.MediaUrl;
             existingBookmark.IsPublic = bookmark.IsPublic;
-            existingBookmark.Categories.Clear();
 
+            // --- LOGICA UPLOAD IMAGINE (Editare) ---
+            if (bookmark.ImageUpload != null)
+            {
+                // Daca userul incarca o poza noua, o procesam
+                var storagePath = Path.Combine(_env.WebRootPath, "images", "bookmarks");
+                if (!Directory.Exists(storagePath)) Directory.CreateDirectory(storagePath);
+
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(bookmark.ImageUpload.FileName);
+                var filePath = Path.Combine(storagePath, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await bookmark.ImageUpload.CopyToAsync(stream);
+                }
+
+                // Suprascriem vechiul URL cu noua imagine
+                existingBookmark.MediaUrl = "/images/bookmarks/" + fileName;
+            }
+            else if (!string.IsNullOrEmpty(bookmark.MediaUrl))
+            {
+                // Daca NU a incarcat poza noua, dar a schimbat textul URL-ului (ex: link YouTube), il actualizam
+                // Atentie: Aici decidem prioritatea. De obicei, daca da upload, ignoram URL-ul text.
+                existingBookmark.MediaUrl = bookmark.MediaUrl;
+            }
+            // ---------------------------------------
+
+            // Actualizare categorii (codul existent ramane la fel)
+            existingBookmark.Categories.Clear();
             if (selectedCategories != null)
             {
                 foreach (var catId in selectedCategories)
@@ -163,7 +237,6 @@ namespace dotNet_Project.Controllers
             {
                 _context.Update(existingBookmark);
                 await _context.SaveChangesAsync();
-                await DeleteOrphanTags();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -202,7 +275,7 @@ namespace dotNet_Project.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Show(int? id)
         {
             if (id == null) return NotFound();
             var bookmark = await _context.Bookmarks
@@ -210,9 +283,32 @@ namespace dotNet_Project.Controllers
                                          .Include(b => b.User)
                                          .Include(b => b.Categories)
                                          .Include(b => b.Votes)
+                                         // Includem User-ul comentariului pentru a avea acces la ProfilePicture
                                          .Include(b => b.Comments).ThenInclude(c => c.User)
                                          .FirstOrDefaultAsync(m => m.Id == id);
             if (bookmark == null) return NotFound();
+
+            // --- LOGICA DE VIZIBILITATE (existenta) ---
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Admin");
+
+            if (!bookmark.IsPublic)
+            {
+                if (bookmark.UserId != currentUserId && !isAdmin)
+                {
+                    if (currentUserId == null) return Challenge();
+                    return Forbid();
+                }
+            }
+
+            ViewData["CurrentUserProfilePic"] = null;
+            if (currentUserId != null)
+            {
+                var currentUser = await _userManager.FindByIdAsync(currentUserId);
+                ViewData["CurrentUserProfilePic"] = currentUser?.ProfilePicture;
+            }
+            // ----------------------------
+
             return View(bookmark);
         }
 

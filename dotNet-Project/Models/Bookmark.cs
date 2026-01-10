@@ -19,7 +19,12 @@ namespace dotNet_Project.Models
         public string? Description { get; set; }
 
         // Calea către imagine sau URL video
-        public string? MediaUrl { get; set; }
+        public string? MediaUrl { get; set; } // Aici ajunge calea finala sau linkul YouTube
+
+        // ADĂUGĂM ASTA:
+        [NotMapped]
+        [Display(Name = "Upload Image")]
+        public IFormFile? ImageUpload { get; set; }
 
         [Display(Name = "Public")]
         public bool IsPublic { get; set; } = true;
@@ -46,7 +51,9 @@ namespace dotNet_Project.Models
         // Proprietate calculată pentru a număra like-urile rapid
         public int LikeCount { get; set; } = 0;
 
-        // Proprietate auxiliară pentru input-ul de tag-uri (opțional)
+        
+        
+        
         [NotMapped]
         public string? TagString { get; set; }
         // 5. Comentarii

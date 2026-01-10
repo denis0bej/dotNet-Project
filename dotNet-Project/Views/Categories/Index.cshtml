@@ -35,14 +35,13 @@
                     @(item.IsPublic ? "Public" : "Private")
                 </td>
                 <td>
-                    @if (User.IsInRole("Admin") || item.UserId == UserManager.GetUserId(User))
-                    {
-                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Delete</a>
-                    }
-
                     @if (item.UserId == UserManager.GetUserId(User))
                     {
                         <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Edit</a>
+                    }
+                    @if (User.IsInRole("Admin") || item.UserId == UserManager.GetUserId(User))
+                    {
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Delete</a>
                     }
                 </td>
             </tr>

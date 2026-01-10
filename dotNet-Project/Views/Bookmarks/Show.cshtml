@@ -1,0 +1,211 @@
+﻿@model dotNet_Project.Models.Bookmark
+
+@{
+    ViewData["Title"] = Model.Title;
+    bool hasMedia = !string.IsNullOrEmpty(Model.MediaUrl);
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <div class="mb-4">
+                <h1 class="fw-bold mb-2">@Model.Title</h1>
+
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    @foreach (var cat in Model.Categories)
+                    {
+                        <a asp-controller="Categories" asp-action="Show" asp-route-id="@cat.Id" class="text-decoration-none">
+                            <span class="badge bg-light text-primary border px-3 py-2 rounded-pill">
+                                <i class="bi bi-folder2-open me-1"></i> @cat.Name
+                            </span>
+                        </a>
+                    }
+
+                    @if (!Model.IsPublic)
+                    {
+                        <span class="badge bg-danger px-3 py-2 rounded-pill">
+                            <i class="bi bi-lock-fill me-1"></i> Private
+                        </span>
+                    }
+                </div>
+
+                <div class="text-muted small">
+                    Posted by
+                    <a asp-controller="Profiles" asp-action="Show" asp-route-id="@Model.UserId" class="fw-bold text-dark text-decoration-none">
+                        @(Model.User?.UserName ?? "Unknown")
+                    </a>
+                    on @Model.CreatedAt.ToString("MMMM dd, yyyy")
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 overflow-hidden">
+
+                @if (hasMedia)
+                {
+                    <div class="bg-black text-center w-100 position-relative">
+                        @if (Model.MediaUrl.Contains("youtube.com") || Model.MediaUrl.Contains("youtu.be"))
+                        {
+                            // Extragere ID Video YouTube
+                            var videoId = Model.MediaUrl.Split("v=").LastOrDefault();
+                            if (Model.MediaUrl.Contains("youtu.be/"))
+                            {
+                                videoId = Model.MediaUrl.Split("youtu.be/").LastOrDefault()?.Split("?").FirstOrDefault();
+                            }
+
+                            <div class="ratio ratio-16x9">
+                                <iframe src="https://www.youtube.com/embed/@videoId" allowfullscreen style="border:0;"></iframe>
+                            </div>
+                        }
+                        else if (Model.MediaUrl.EndsWith(".jpg") || Model.MediaUrl.EndsWith(".png") || Model.MediaUrl.EndsWith(".jpeg") || Model.MediaUrl.EndsWith(".webp") || Model.MediaUrl.EndsWith(".gif"))
+                        {
+                            <img src="@Model.MediaUrl" class="img-fluid" style="max-height: 600px; width: auto;" alt="@Model.Title">
+                        }
+                        else
+                        {
+                            // Link generic (daca nu e nici poza, nici video)
+                            <div class="p-5 bg-light text-center">
+                                <i class="bi bi-link-45deg display-1 text-muted"></i>
+                                <p class="mt-3">
+                                    External Resource: <a href="@Model.MediaUrl" target="_blank" class="btn btn-outline-primary btn-sm">Open Link &nearr;</a>
+                                </p>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="lead text-dark mb-4" style="white-space: pre-wrap;">@Model.Description</div>
+
+                    @if (Model.Tags.Any())
+                    {
+                        <div class="mb-4">
+                            @foreach (var tag in Model.Tags)
+                            {
+                                <span class="text-muted me-2">#@tag.Name</span>
+                            }
+                        </div>
+                    }
+
+                    <hr />
+
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="d-flex gap-2">
+                            @if (User.Identity.IsAuthenticated && (Model.UserId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value || User.IsInRole("Admin")))
+                            {
+                                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-warning">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Delete
+                                </a>
+                            }
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <a asp-action="Index" class="btn btn-light border">Back to Feed</a>
+
+                            @if (User.Identity.IsAuthenticated)
+                            {
+                                <a asp-action="SaveToCollection" asp-route-id="@Model.Id" class="btn btn-danger text-white">
+                                    <i class="bi bi-pin-angle-fill"></i> Save
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-light p-4">
+                    <h5 class="mb-3">Comments (@Model.Comments.Count)</h5>
+
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <form asp-controller="Comments" asp-action="Add" method="post" class="mb-4">
+                            <input type="hidden" name="BookmarkId" value="@Model.Id" />
+                            <div class="d-flex gap-2">
+                                @{
+                                    var myProfilePic = ViewData["CurrentUserProfilePic"] as string;
+                                }
+
+                                @if (!string.IsNullOrEmpty(myProfilePic))
+                                {
+                                    <img src="@myProfilePic" class="rounded-circle border" width="40" height="40" style="object-fit: cover;" alt="Me">
+                                }
+                                else
+                                {
+                                    <img src="https://placehold.co/40" class="rounded-circle" width="40" height="40" alt="Me">
+                                }
+
+                                <div class="flex-grow-1">
+                                    <textarea name="Content" class="form-control" rows="2" placeholder="Add a comment..." required></textarea>
+                                    <div class="text-end mt-2">
+                                        <button type="submit" class="btn btn-primary btn-sm px-4">Post</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="alert alert-secondary text-center mb-4">
+                            Please <a href="/Identity/Account/Login" class="fw-bold">login</a> to join the discussion.
+                        </div>
+                    }
+
+                    @if (Model.Comments.Any())
+                    {
+                        @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
+                        {
+                            <div class="d-flex gap-3 mb-3">
+
+                                @if (!string.IsNullOrEmpty(comment.User?.ProfilePicture))
+                                {
+                                    <a asp-controller="Profiles" asp-action="Show" asp-route-id="@comment.UserId">
+                                        <img src="@comment.User.ProfilePicture"
+                                             class="rounded-circle flex-shrink-0 border shadow-sm"
+                                             style="width: 40px; height: 40px; object-fit: cover;"
+                                             alt="@comment.User.UserName">
+                                    </a>
+                                }
+                                else
+                                {
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 40px; height: 40px; font-weight: bold;">
+                                        @(comment.User?.UserName?.Substring(0, 1).ToUpper() ?? "U")
+                                    </div>
+                                }
+
+                                <div>
+                                    <div class="bg-white p-3 rounded shadow-sm border">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <strong>
+                                                <a asp-controller="Profiles" asp-action="Show" asp-route-id="@comment.UserId" class="text-dark text-decoration-none">
+                                                    @comment.User?.UserName
+                                                </a>
+                                            </strong>
+                                            <small class="text-muted ms-3">@comment.CreatedAt.ToString("g")</small>
+                                        </div>
+                                        <p class="mb-0 text-secondary">@comment.Content</p>
+                                    </div>
+
+                                    @if (User.Identity.IsAuthenticated && (comment.User?.UserName == User.Identity.Name || User.IsInRole("Admin")))
+                                    {
+                                        <div class="ms-2 mt-1">
+                                            <form asp-controller="Comments" asp-action="Delete" asp-route-id="@comment.Id" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-link btn-sm text-danger p-0 text-decoration-none" style="font-size: 0.85rem;" onclick="return confirm('Delete this comment?')">Delete</button>
+                                            </form>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-center text-muted py-3">No comments yet. Be the first to share your thoughts!</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

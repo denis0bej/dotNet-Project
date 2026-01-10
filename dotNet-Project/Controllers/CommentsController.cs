@@ -38,13 +38,13 @@ namespace dotNet_Project.Controllers
             {
                 _context.Comments.Add(comment);
                 await _context.SaveChangesAsync();
-                return RedirectToAction("Details", "Bookmarks", new { id = comment.BookmarkId });
+                return RedirectToAction("Show", "Bookmarks", new { id = comment.BookmarkId });
             }
 
             // (Opțional pentru debug) Dacă tot nu merge, poți pune un breakpoint aici să vezi erorile:
             // var errors = ModelState.Values.SelectMany(v => v.Errors);
 
-            return RedirectToAction("Details", "Bookmarks", new { id = comment.BookmarkId });
+            return RedirectToAction("Show", "Bookmarks", new { id = comment.BookmarkId });
         }
 
         // POST: Ștergere Comentariu
@@ -66,7 +66,7 @@ namespace dotNet_Project.Controllers
             {
                 _context.Comments.Remove(comment);
                 await _context.SaveChangesAsync();
-                return RedirectToAction("Details", "Bookmarks", new { id = comment.BookmarkId });
+                return RedirectToAction("Show", "Bookmarks", new { id = comment.BookmarkId });
             }
 
             return Forbid();
@@ -130,7 +130,7 @@ namespace dotNet_Project.Controllers
                 _context.Comments.Update(existingComment);
                 await _context.SaveChangesAsync();
 
-                return RedirectToAction("Details", "Bookmarks", new { id = existingComment.BookmarkId });
+                return RedirectToAction("Show", "Bookmarks", new { id = existingComment.BookmarkId });
             }
 
             return View(requestComment);

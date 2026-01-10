@@ -7,24 +7,74 @@
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm border-0">
                 <div class="card-header bg-warning text-dark">
-                    <h4 class="mb-0">Edit Bookmark</h4>
+                    <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Edit Bookmark</h4>
                 </div>
-                <div class="card-body">
-                    <form asp-action="Edit">
-                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div class="card-body p-4">
+                    <form asp-action="Edit" enctype="multipart/form-data">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                         <input type="hidden" asp-for="Id" />
 
-                        <div class="mb-3">
-                            <label asp-for="Title" class="form-label">Title</label>
+                        <div class="mb-4">
+                            <label asp-for="Title" class="form-label fw-bold">Title</label>
                             <input asp-for="Title" class="form-control" />
                             <span asp-validation-for="Title" class="text-danger"></span>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="card bg-light mb-4 border">
+                            <div class="card-body">
+                                <h6 class="card-title fw-bold mb-3">Update Media</h6>
+
+                                @if (!string.IsNullOrEmpty(Model.MediaUrl))
+                                {
+                                    <div class="mb-3 p-2 bg-white rounded border">
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-secondary me-2">Current:</span>
+                                            <small class="text-muted text-break flex-grow-1">@Model.MediaUrl</small>
+                                        </div>
+
+                                        @if (Model.MediaUrl.EndsWith(".jpg") || Model.MediaUrl.EndsWith(".png") || Model.MediaUrl.EndsWith(".webp"))
+                                        {
+                                            <div class="mt-2">
+                                                <img src="@Model.MediaUrl" alt="Preview" class="img-thumbnail" style="height: 60px;">
+                                            </div>
+                                        }
+                                    </div>
+                                }
+
+                                <div class="mb-3">
+                                    <label asp-for="ImageUpload" class="form-label fw-bold">Upload New Image</label>
+                                    <input asp-for="ImageUpload" type="file" class="form-control" accept="image/*" />
+                                    <div class="form-text text-muted">Uploading a new image will replace the current media.</div>
+                                    <span asp-validation-for="ImageUpload" class="text-danger"></span>
+                                </div>
+
+                                <div class="text-center text-muted fw-bold my-3">- OR -</div>
+
+                                <div class="mb-0">
+                                    <label asp-for="MediaUrl" class="form-label fw-bold">External Link (YouTube / Image URL)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                        <input asp-for="MediaUrl" class="form-control" placeholder="https://..." />
+                                    </div>
+                                    <div class="form-text text-muted">
+                                        Edit the link manually here (YouTube, etc.).
+                                    </div>
+                                    <span asp-validation-for="MediaUrl" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Description" class="form-label fw-bold">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="5"></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
                             <label class="form-label fw-bold">Categories</label>
-                            <div class="card p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+                            <div class="card p-3 bg-light border" style="max-height: 200px; overflow-y: auto;">
                                 @if (ViewBag.CategoryList != null)
                                 {
                                     @foreach (var category in (IEnumerable<SelectListItem>)ViewBag.CategoryList)
@@ -36,8 +86,8 @@
                                                    id="cat_@category.Value"
                                                    @(category.Selected ? "checked" : "") />
 
-                                            <label class="form-check-label" for="cat_@category.Value">
-                                                @category.Text
+                                            <label class="form-check-label" for="cat_@category.Value" style="cursor: pointer;">
+                                                <i class="bi bi-folder-fill text-warning me-1"></i> @category.Text
                                             </label>
                                         </div>
                                     }
@@ -49,29 +99,18 @@
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label asp-for="Description" class="form-label">Description</label>
-                            <textarea asp-for="Description" class="form-control" rows="4"></textarea>
-                            <span asp-validation-for="Description" class="text-danger"></span>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="MediaUrl" class="form-label">Media Content (link)</label>
-                            <input asp-for="MediaUrl" class="form-control" />
-                            <span asp-validation-for="MediaUrl" class="text-danger"></span>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input class="form-check-input" type="checkbox" asp-for="IsPublic" />
-                            <label class="form-check-label" asp-for="IsPublic">
-                                Public
-                            </label>
-                            <div class="form-text">
-                                Check to make it public.
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" asp-for="IsPublic" />
+                                <label class="form-check-label fw-bold" asp-for="IsPublic">Public Visibility</label>
                             </div>
                         </div>
-                        <div class="d-flex justify-content-between mt-4">
-                            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Save Changes</button>
+
+                        <div class="d-flex justify-content-between mt-5 pt-3 border-top">
+                            <a asp-action="Index" class="btn btn-outline-secondary px-4">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold">
+                                <i class="bi bi-save"></i> Save Changes
+                            </button>
                         </div>
                     </form>
                 </div>
