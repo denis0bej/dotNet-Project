@@ -10,224 +10,134 @@
 
 <div class="container mt-4 mb-5">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h1 class="display-6 fw-bold mb-0">My Collection</h1>
-            <p class="text-muted small">Manage all your bookmarks.</p>
+            <h1 class="display-6 fw-bold mb-0 text-dark">My Collection</h1>
+            <p class="text-muted small">Manage and organize your personal bookmarks.</p>
         </div>
-        <a asp-action="New" class="btn btn-primary rounded-pill px-4 shadow-sm">
-            <i class="bi bi-plus-lg me-1"></i> Add New
+
+        <a asp-action="New" class="btn btn-success rounded-pill px-4 shadow-sm d-flex align-items-center">
+            <span class="fw-bold me-2">Add New Bookmark</span> <i class="bi bi-plus-lg"></i>
         </a>
     </div>
 
-    <div class="row mb-3 justify-content-center">
+    <div class="row justify-content-center mb-4">
         <div class="col-md-8">
             <form asp-controller="Bookmarks" asp-action="Index" method="get">
-                <div class="input-group mb-3 shadow-sm">
-                    <span class="input-group-text bg-white border-end-0">
-                        <i class="bi bi-search text-muted"></i>
-                    </span>
-                    <input type="text" name="searchString" class="form-control border-start-0 border-end-0"
-                           placeholder="(title, tag, description)"
-                           value="@ViewData["CurrentFilter"]">
+                <div class="input-group shadow-sm">
+                    <input type="text"
+                           name="searchString"
+                           class="form-control border-end-0 py-2 ps-4"
+                           placeholder="Search your collection..."
+                           value="@ViewData["CurrentFilter"]"
+                           style="border-radius: 50px 0 0 50px; border-color: #ced4da;">
 
                     @if (ViewData["CurrentFilter"] != null)
                     {
-                        <a asp-action="Index" class="btn btn-outline-secondary border-start-0 border-end-0" title="Șterge filtrele">
+                        <a asp-action="Index" class="btn btn-outline-secondary border-start-0 border-end-0 d-flex align-items-center" title="Clear Search" style="border-color: #ced4da;">
                             <i class="bi bi-x-lg"></i>
                         </a>
                     }
-                    <button type="submit" class="btn btn-primary">Search</button>
+
+                    <button class="btn btn-primary px-4 d-flex align-items-center gap-2" type="submit" style="border-radius: 0 50px 50px 0;">
+                        <i class="bi bi-search"></i> Search
+                    </button>
                 </div>
-                @if (ViewData["CurrentSort"] != null)
-                {
-                    <input type="hidden" name="sortOrder" value="@ViewData["CurrentSort"]" />
-                }
             </form>
         </div>
     </div>
 
-    <div class="d-flex justify-content-center mb-5">
-        <div class="btn-group shadow-sm" role="group">
-            <a asp-action="Index" asp-route-sortOrder="Date" asp-route-searchString="@ViewData["CurrentFilter"]"
-               class="btn btn-sm @(ViewData["CurrentSort"] == "Date" || ViewData["CurrentSort"] == null ? "btn-dark" : "btn-outline-dark")">
-                <i class="bi bi-clock"></i> Most Recent
-            </a>
-            <a asp-action="Index" asp-route-sortOrder="Popular" asp-route-searchString="@ViewData["CurrentFilter"]"
-               class="btn btn-sm @(ViewData["CurrentSort"] == "Popular" ? "btn-danger" : "btn-outline-danger")">
-                <i class="bi bi-fire"></i> Most Popular
-            </a>
-        </div>
-    </div>
-
-    @if (!Model.Any())
-    {
-        <div class="text-center py-5">
-            <div class="mb-3">
-                <i class="bi bi-folder2-open display-1 text-muted opacity-25"></i>
-            </div>
-            <h4 class="text-muted">Didn't find any bookmarks..'</h4>
-        </div>
-    }
-
-    <div class="row">
-        @foreach (var item in Model)
+    <div class="row g-4">
+        @if (Model.Any())
         {
-            var heartClass = item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart text-dark";
+            @foreach (var item in Model)
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card post-card h-100 shadow-sm border-0">
+                        <a asp-action="Show" asp-route-id="@item.Id" class="card-main-link"></a>
 
-            <div class="col-md-4 mb-4">
-                <div class="card post-card bg-white">
+                        <div class="position-relative overflow-hidden" style="height: 200px;">
+                            @if (!string.IsNullOrEmpty(item.MediaUrl))
+                            {
+                                <img src="@item.MediaUrl" class="w-100 h-100 object-fit-cover" alt="@item.Title" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="w-100 h-100 bg-light d-flex justify-content-center align-items-center">
+                                    <i class="bi bi-image text-muted fs-1"></i>
+                                </div>
+                            }
 
-                    <a asp-controller="Bookmarks" asp-action="Show" asp-route-id="@item.Id" class="card-main-link" aria-label="@item.Title"></a>
-
-                    @if (!string.IsNullOrEmpty(item.MediaUrl) && (item.MediaUrl.EndsWith(".jpg") || item.MediaUrl.EndsWith(".png") || item.MediaUrl.EndsWith(".webp")))
-                    {
-                        <img src="@item.MediaUrl" class="post-img-bg" alt="@item.Title">
-                    }
-                    else if (item.MediaUrl != null && item.MediaUrl.Contains("youtube"))
-                    {
-                        <div class="post-placeholder-bg bg-light">
-                            <i class="bi bi-youtube text-danger fs-1"></i>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="post-placeholder-bg bg-light">
-                            <span class="fs-1 text-muted"><i class="bi bi-bookmark-star"></i></span>
-                        </div>
-                    }
-
-                    <div class="post-badges-top bring-to-front">
-                        @foreach (var catName in item.CategoryNames.Take(2))
-                        {
-                            <span class="badge bg-white text-dark shadow-sm border">
-                                @catName
-                            </span>
-                        }
-                    </div>
-
-                    <div class="position-absolute top-0 start-0 p-3 bring-to-front d-flex flex-column gap-2">
-                        @if (!item.IsPublic)
-                        {
-                            <span class="badge bg-dark text-white shadow-sm border border-secondary mb-1 align-self-start">
-                                <i class="bi bi-lock-fill"></i> Private
-                            </span>
-                        }
-
-                        <div class="d-flex gap-2">
-                            <a asp-controller="Bookmarks" asp-action="Edit" asp-route-id="@item.Id"
-                               class="btn btn-light btn-sm rounded-circle shadow-sm opacity-75 hover-opacity-100 d-flex align-items-center justify-content-center"
-                               style="width: 32px; height: 32px;" title="Edit">
-                                <i class="bi bi-pencil-fill text-dark small"></i>
-                            </a>
-                            <a asp-controller="Bookmarks" asp-action="Delete" asp-route-id="@item.Id"
-                               class="btn btn-light btn-sm rounded-circle shadow-sm opacity-75 hover-opacity-100 d-flex align-items-center justify-content-center"
-                               style="width: 32px; height: 32px;" title="Delete">
-                                <i class="bi bi-trash-fill text-danger small"></i>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="post-content-overlay d-flex flex-column justify-content-end">
-
-                        <div class="d-flex justify-content-between align-items-end bring-to-front">
-                            <div class="d-flex flex-column pe-2" style="min-width: 0;">
-                                <h5 class="card-title fw-bold text-truncate w-100 mb-1 text-dark">
-                                    @item.Title
-                                </h5>
-
-                                @if (item.Tags != null && item.Tags.Any())
+                            <div class="post-badges-top">
+                                @foreach (var catName in item.CategoryNames.Take(2))
                                 {
-                                    <div class="mb-2">
-                                        @foreach (var tagName in item.Tags.Take(3))
-                                        {
-                                            <span class="text-muted small me-1">
-                                                #@tagName
-                                            </span>
-                                        }
-                                    </div>
+                                    <span class="badge bg-white text-dark shadow-sm opacity-90">@catName</span>
                                 }
-
-                                <div class="d-flex align-items-center mt-1">
-                                    @if (!string.IsNullOrEmpty(item.UserProfilePicture))
-                                    {
-                                        <img src="@item.UserProfilePicture" class="user-avatar-small me-2" alt="User">
-                                    }
-                                    else
-                                    {
-                                        <i class="bi bi-person-circle me-2 text-muted fs-6"></i>
-                                    }
-                                    <span class="text-muted small text-truncate fw-normal">
-                                        @item.UserDisplayName
-                                    </span>
-                                </div>
                             </div>
 
-                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                                <div class="d-flex align-items-center cursor-pointer like-container" onclick="toggleLike(@item.Id)">
-                                    <i id="heart-icon-@item.Id" class="bi @heartClass fs-3 me-1 like-icon"></i>
-                                    <span id="like-count-@item.Id" class="fw-bold text-dark">@item.LikeCount</span>
-                                </div>
+                            <div class="position-absolute bottom-0 start-0 m-2">
+                                <span class="badge @(item.IsPublic ? "bg-success" : "bg-secondary") shadow-sm">
+                                    @(item.IsPublic ? "Public" : "Private")
+                                </span>
                             </div>
                         </div>
 
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title fw-bold text-dark text-truncate">@item.Title</h5>
+                            <p class="card-text text-muted small text-truncate">
+                                @(string.IsNullOrEmpty(item.Description) ? "No description provided." : item.Description)
+                            </p>
+
+                            <div class="mt-auto d-flex align-items-center justify-content-between pt-3 border-top">
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar3 me-1"></i> @item.CreatedAt.ToString("dd MMM yyyy")
+                                </small>
+
+                                <div class="like-container bring-to-front d-flex align-items-center gap-1" onclick="toggleLike(@item.Id)" style="cursor: pointer; z-index: 5;">
+                                    <i id="heart-icon-@item.Id"
+                                       class="bi @(item.IsLikedByCurrentUser ? "bi-heart-fill text-danger" : "bi-heart text-dark") fs-5 like-icon"></i>
+                                    <span id="like-count-@item.Id" class="fw-bold small text-dark">@item.LikeCount</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="col-12 text-center py-5">
+                <div class="text-muted opacity-75">
+                    <i class="bi bi-journal-bookmark fs-1"></i>
+                    <p class="mt-3 fs-5">You haven't added any bookmarks yet.</p>
+                    <a asp-action="New" class="btn btn-outline-success mt-2">Create Your First Bookmark</a>
                 </div>
             </div>
         }
     </div>
 
-    <div class="d-flex justify-content-center mt-4 mb-5">
+    <div class="d-flex justify-content-center mt-5">
         @{
             var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
             var nextDisabled = !Model.HasNextPage ? "disabled" : "";
         }
-        <a asp-action="Index" asp-route-pageNumber="@(Model.PageIndex - 1)" asp-route-sortOrder="@ViewData["CurrentSort"]" asp-route-searchString="@ViewData["CurrentFilter"]"
-           class="btn btn-outline-secondary me-2 @prevDisabled">
+
+        <a asp-action="Index"
+           asp-route-pageNumber="@(Model.PageIndex - 1)"
+           asp-route-searchString="@ViewData["CurrentFilter"]"
+           class="btn btn-outline-dark me-2 @prevDisabled rounded-pill px-4">
             <i class="bi bi-arrow-left"></i> Previous
         </a>
+
         <span class="align-self-center mx-3 fw-bold text-muted">
             Page @Model.PageIndex of @Model.TotalPages
         </span>
-        <a asp-action="Index" asp-route-pageNumber="@(Model.PageIndex + 1)" asp-route-sortOrder="@ViewData["CurrentSort"]" asp-route-searchString="@ViewData["CurrentFilter"]"
-           class="btn btn-outline-secondary @nextDisabled">
+
+        <a asp-action="Index"
+           asp-route-pageNumber="@(Model.PageIndex + 1)"
+           asp-route-searchString="@ViewData["CurrentFilter"]"
+           class="btn btn-outline-dark @nextDisabled rounded-pill px-4">
             Next <i class="bi bi-arrow-right"></i>
         </a>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        async function toggleLike(bookmarkId) {
-            const tokenInput = document.getElementsByName('__RequestVerificationToken')[0];
-            if (!tokenInput) return;
-
-            try {
-                const heartIcon = document.getElementById(`heart-icon-${bookmarkId}`);
-                const countSpan = document.getElementById(`like-count-${bookmarkId}`);
-
-                const response = await fetch('/Bookmarks/ToggleLike', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'RequestVerificationToken': tokenInput.value
-                    },
-                    body: JSON.stringify(bookmarkId)
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    countSpan.innerText = data.newCount;
-                    if (data.isLiked) {
-                        heartIcon.classList.remove('bi-heart', 'text-dark');
-                        heartIcon.classList.add('bi-heart-fill', 'text-danger', 'animate-like');
-                        setTimeout(() => heartIcon.classList.remove('animate-like'), 400);
-                    } else {
-                        heartIcon.classList.add('bi-heart', 'text-dark');
-                        heartIcon.classList.remove('bi-heart-fill', 'text-danger');
-                    }
-                }
-            } catch (error) { console.error("Error:", error); }
-        }
-    </script>
-}
