@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace dotNet_Project.Models // Sau namespace-ul tău corect
+namespace dotNet_Project.Models
 {
     public class PaginatedList<T> : List<T>
     {
@@ -13,6 +13,13 @@ namespace dotNet_Project.Models // Sau namespace-ul tău corect
         {
             PageIndex = pageIndex;
             TotalPages = (int)Math.Ceiling(count / (double)pageSize);
+
+            // FIX: Dacă nu există rezultate (count=0), forțăm TotalPages să fie 1.
+            // Astfel, în interfață va apărea "Page 1 of 1" în loc de "Page 1 of 0".
+            if (TotalPages < 1)
+            {
+                TotalPages = 1;
+            }
 
             this.AddRange(items);
         }
