@@ -56,88 +56,105 @@ body {
 }
 
 /* =========================================
-   ANIMATII SI INTERACTIUNI LIKE
+   ANIMATII LIKE / UNLIKE (Smooth Heart & Break)
    ========================================= */
 
+/* Containerul iconiței - necesar pentru a centra rotațiile */
 .like-container {
-    transition: transform 0.1s ease-in-out;
     display: inline-flex;
     align-items: center;
+    cursor: pointer;
 }
 
-    .like-container:hover .like-icon {
-        transform: scale(1.2);
-        color: #dc3545;
-    }
-
+/* Starea de bază a inimii */
 .like-icon {
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease-in-out;
+    transition: transform 0.2s ease, color 0.2s ease;
     display: inline-block;
+    transform-origin: center center;
 }
 
-@keyframes heartBeat {
+/* Hover finuț când inima e goală */
+.like-container:hover .like-icon.bi-heart {
+    transform: scale(1.1);
+    color: #dc3545; /* Roșu pal la hover */
+}
+
+/* --- 1. ANIMAȚIA DE LIKE (Elastic Pop) --- */
+@keyframes elastic-heart-fill {
     0% {
-        transform: scale(1);
+        transform: scale(0.2);
+        opacity: 0;
     }
 
-    25% {
-        transform: scale(1.3);
+    40% {
+        transform: scale(1.4);
     }
 
-    50% {
-        transform: scale(1);
+    60% {
+        transform: scale(0.9);
     }
 
-    75% {
-        transform: scale(1.3);
+    80% {
+        transform: scale(1.2);
     }
 
     100% {
         transform: scale(1);
+        opacity: 1;
     }
 }
 
 .animate-like {
-    animation: heartBeat 0.6s ease-in-out;
+    /* Folosim bi-heart-fill, deci e roșie */
+    color: #dc3545 !important;
+    animation: elastic-heart-fill 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
 
-@keyframes heartBreak {
+/* --- 2. ANIMAȚIA DE UNLIKE (Heartbreak / Frângere) --- */
+@keyframes heartbreak-shake-fall {
     0% {
         transform: scale(1);
-        opacity: 1;
         color: #dc3545;
     }
 
-    20% {
-        transform: translateX(-2px) rotate(-5deg);
+    15% {
+        /* Vibrație stânga */
+        transform: scale(1.1) rotate(-12deg) translateX(-2px);
     }
 
-    40% {
-        transform: translateX(2px) rotate(5deg);
+    30% {
+        /* Vibrație dreapta */
+        transform: scale(1.1) rotate(12deg) translateX(2px);
     }
 
-    60% {
-        transform: translateX(-2px) rotate(-5deg);
-        opacity: 0.8;
+    45% {
+        /* Punctul de rupere */
+        transform: scale(1.2) rotate(-5deg);
+        opacity: 1;
     }
 
-    80% {
-        transform: translateX(2px) rotate(5deg) scale(0.9);
+    70% {
+        /* Începe să cadă și să dispară */
+        transform: scale(0.8) translateY(10px) rotate(10deg);
         opacity: 0.5;
     }
 
     100% {
-        transform: scale(0.8) translateY(5px);
+        /* Dispariție totală */
+        transform: scale(0) translateY(20px);
         opacity: 0;
     }
 }
 
 .animate-break {
-    animation: heartBreak 0.7s ease-out forwards;
+    /* Aici JS-ul a pus deja clasa bi-heartbreak-fill */
+    color: #dc3545 !important; /* Forțăm roșu cât timp se rupe */
+    animation: heartbreak-shake-fall 0.75s ease-in forwards;
 }
 
+
 /* =========================================
-   COMPONENTA: POST CARD / BOOKMARK (Varianta 1 - Design Avansat)
+   COMPONENTA: POST CARD / BOOKMARK
    ========================================= */
 
 .post-card {
@@ -145,7 +162,7 @@ body {
     border: none;
     border-radius: var(--bs-card-border-radius);
     overflow: hidden;
-    height: 400px; /* Înălțime fixă pentru grilă uniformă */
+    height: 400px;
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -160,7 +177,6 @@ body {
             color: #0d6efd;
         }
 
-/* Link Invizibil (Acoperă tot cardul) */
 .card-main-link {
     position: absolute;
     top: 0;
@@ -172,7 +188,6 @@ body {
     opacity: 0;
 }
 
-/* Imagine Fundal */
 .post-img-bg {
     position: absolute;
     top: 0;
@@ -183,7 +198,6 @@ body {
     z-index: 0;
 }
 
-/* Placeholder Fundal */
 .post-placeholder-bg {
     position: absolute;
     top: 0;
@@ -197,19 +211,17 @@ body {
     z-index: 0;
 }
 
-/* Overlay Text (Gradient jos) */
 .post-content-overlay {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     z-index: 2;
-    pointer-events: none; /* Permite click-ul prin el */
+    pointer-events: none;
     background: linear-gradient(to top, #ffffff 15%, rgba(255,255,255,0.95) 45%, rgba(255,255,255,0) 100%);
     padding: 4rem 1rem 1rem 1rem;
 }
 
-/* Badges Sus */
 .post-badges-top {
     position: absolute;
     top: 15px;
@@ -220,7 +232,6 @@ body {
     gap: 5px;
 }
 
-/* Utilitare Z-Index */
 .bring-to-front {
     position: relative;
     z-index: 10;
@@ -238,35 +249,9 @@ body {
 }
 
 /* =========================================
-   STILURI SUPLIMENTARE (Varianta 2)
+   SEARCH BAR & OVERLAY
    ========================================= */
 
-/* Imagini simple (pentru alte pagini) */
-.card-img-custom {
-    height: 250px;
-    object-fit: cover;
-    width: 100%;
-}
-
-.card-img-placeholder {
-    height: 250px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.card-overlay-badges {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    opacity: 0.9;
-}
-
-/* =========================================
-   SEARCH BAR & OVERLAY (Varianta 2 - Esențial pentru Layout)
-   ========================================= */
-
-/* Input Căutare */
 input[name="searchString"] {
     border: 2px solid #6c757d !important;
     font-weight: 600;
@@ -288,7 +273,6 @@ input[name="searchString"]::placeholder {
     opacity: 0.8;
 }
 
-/* Overlay Mobil */
 #mobile-search-overlay {
     position: absolute;
     top: 0;
