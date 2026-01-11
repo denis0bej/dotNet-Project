@@ -191,5 +191,65 @@ namespace dotNet_Project.Controllers
                 }
             }
         }
+        // În ProfilesController.cs
+
+        // În ProfilesController.cs
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteUser(string id)
+        {
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound("User not found");
+
+            // --- 1. ȘTERGERE IMAGINI BOOKMARK-URI & BOOKMARK-URI ---
+            // Trebuie să ștergem bookmark-urile utilizatorului pentru a nu primi eroare de FK_Bookmarks_AspNetUsers
+            // De asemenea, ștergem și imaginile fizice asociate lor.
+            var userBookmarks = _context.Bookmarks.Where(b => b.UserId == id).ToList();
+
+            foreach (var bookmark in userBookmarks)
+            {
+                // Ștergem fișierul fizic (imaginea) dacă există
+                DeleteLocalImage(bookmark.MediaUrl);
+            }
+            // Ștergem înregistrările din baza de date
+            _context.Bookmarks.RemoveRange(userBookmarks);
+
+            // --- 2. ȘTERGERE CATEGORII (FIX PENTRU EROAREA TA) ---
+            // Aici apărea eroarea: FK_Categories_AspNetUsers_UserId
+            var userCategories = _context.Categories.Where(c => c.UserId == id).ToList();
+            _context.Categories.RemoveRange(userCategories);
+
+            // --- 3. ȘTERGERE VOTURI & COMENTARII ---
+            var votes = _context.Votes.Where(v => v.UserId == id);
+            _context.Votes.RemoveRange(votes);
+
+            var comments = _context.Comments.Where(c => c.UserId == id);
+            _context.Comments.RemoveRange(comments);
+
+            // Salvăm ștergerile dependente
+            await _context.SaveChangesAsync();
+
+            // --- 4. ȘTERGERE POZĂ PROFIL USER ---
+            if (!string.IsNullOrEmpty(user.ProfilePicture))
+            {
+                DeleteLocalImage(user.ProfilePicture);
+            }
+
+            // --- 5. ȘTERGERE UTILIZATOR FINALĂ ---
+            var result = await _userManager.DeleteAsync(user);
+
+            if (result.Succeeded)
+            {
+                TempData["SuccessMessage"] = "Utilizatorul și toate datele lui au fost șterse.";
+                return RedirectToAction("Index", "Home");
+            }
+            else
+            {
+                // Dacă apare altă eroare, o afișăm (de obicei legată de Identity)
+                return BadRequest("Eroare la ștergerea userului: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+        }
     }
 }

@@ -8,8 +8,8 @@ namespace dotNet_Project.Models
         [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "Comentariul nu poate fi gol.")]
-        [MaxLength(500, ErrorMessage = "Comentariul nu poate depăși 500 de caractere.")]
+        [Required(ErrorMessage = "Comment cannot be empty.")]
+        [StringLength(400, MinimumLength = 5, ErrorMessage = "Comment need to be between {2} and {1} characters long.")]
         public string Content { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;

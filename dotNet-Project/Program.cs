@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using dotNet_Project.Data;
 using Microsoft.AspNetCore.Identity;
 using dotNet_Project.Models;

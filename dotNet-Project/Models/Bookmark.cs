@@ -11,17 +11,16 @@ namespace dotNet_Project.Models
         public int Id { get; set; }
 
         // --- Date Generale ---
-        [Required(ErrorMessage = "Titlul este obligatoriu")]
-        [MaxLength(100, ErrorMessage = "Titlul nu poate depăși 100 de caractere")]
+        [Required(ErrorMessage = "Title is mandatory")]
+        [StringLength(100, MinimumLength = 5, ErrorMessage = "Title needs to be between {2} and {1} long.")]
         public string Title { get; set; }
 
-        [MaxLength(1000, ErrorMessage = "Descrierea nu poate depăși 1000 de caractere")]
+        [MaxLength(1000, ErrorMessage = "Description cannot be longer than 1000 characters.")]
         public string? Description { get; set; }
 
         // Calea către imagine sau URL video
-        public string? MediaUrl { get; set; } // Aici ajunge calea finala sau linkul YouTube
+        public string? MediaUrl { get; set; } 
 
-        // ADĂUGĂM ASTA:
         [NotMapped]
         [Display(Name = "Upload Image")]
         public IFormFile? ImageUpload { get; set; }

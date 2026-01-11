@@ -28,7 +28,7 @@
                         <i class="bi bi-search text-muted"></i>
                     </span>
                     <input type="text" name="searchString" class="form-control border-start-0 border-end-0"
-                           placeholder="Caută (titlu, tag-uri, descriere)..."
+                           placeholder="(title, tag, description)"
                            value="@ViewData["CurrentFilter"]">
 
                     @if (ViewData["CurrentFilter"] != null)
@@ -37,7 +37,7 @@
                             <i class="bi bi-x-lg"></i>
                         </a>
                     }
-                    <button type="submit" class="btn btn-primary">Caută</button>
+                    <button type="submit" class="btn btn-primary">Search</button>
                 </div>
                 @if (ViewData["CurrentSort"] != null)
                 {
@@ -51,11 +51,11 @@
         <div class="btn-group shadow-sm" role="group">
             <a asp-action="Index" asp-route-sortOrder="Date" asp-route-searchString="@ViewData["CurrentFilter"]"
                class="btn btn-sm @(ViewData["CurrentSort"] == "Date" || ViewData["CurrentSort"] == null ? "btn-dark" : "btn-outline-dark")">
-                <i class="bi bi-clock"></i> Recente
+                <i class="bi bi-clock"></i> Most Recent
             </a>
             <a asp-action="Index" asp-route-sortOrder="Popular" asp-route-searchString="@ViewData["CurrentFilter"]"
                class="btn btn-sm @(ViewData["CurrentSort"] == "Popular" ? "btn-danger" : "btn-outline-danger")">
-                <i class="bi bi-fire"></i> Populare
+                <i class="bi bi-fire"></i> Most Popular
             </a>
         </div>
     </div>
@@ -66,7 +66,7 @@
             <div class="mb-3">
                 <i class="bi bi-folder2-open display-1 text-muted opacity-25"></i>
             </div>
-            <h4 class="text-muted">Nu am găsit bookmark-uri.</h4>
+            <h4 class="text-muted">Didn't find any bookmarks..'</h4>
         </div>
     }
 
